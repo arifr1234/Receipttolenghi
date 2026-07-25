@@ -21,9 +21,9 @@ import androidx.compose.ui.unit.dp
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onNavigateToBluetooth: () -> Unit,
-    onNavigateToMode: (String) -> Unit
+    onNavigateToMode: (String) -> Unit,
+    modes: List<String>
 ) {
-    val modes = listOf("Mode 1", "Mode 2", "Mode 3")
 
     Column(
         modifier = modifier

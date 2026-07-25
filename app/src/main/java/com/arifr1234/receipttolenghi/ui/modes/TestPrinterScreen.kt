@@ -43,8 +43,8 @@ fun TestPrinterScreen(
                         "[L]\n" +
                         "[L]If you can read this,\n" +
                         "[L]the Bluetooth connection\n" +
-                        "[L]is working perfectly.\n" +
-                        "[L]\n"
+                        "[L]is working perfectly.\n",
+                        6f
                     )
                 }
             },

@@ -2,6 +2,7 @@ package com.arifr1234.receipttolenghi.ui.bluetooth
 
 import android.Manifest
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +20,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import kotlinx.coroutines.launch
@@ -29,8 +31,9 @@ fun BluetoothScreen(
     modifier: Modifier = Modifier
 ) {
     var isConnecting by remember { mutableStateOf(false) }
-    var connectionStatus by remember { mutableStateOf("") }
+    val isConnected = PrinterManager.isConnected()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
@@ -45,13 +48,14 @@ fun BluetoothScreen(
         if (allGranted) {
             coroutineScope.launch {
                 isConnecting = true
-                connectionStatus = "Connecting..."
                 val success = PrinterManager.connect()
                 isConnecting = false
-                connectionStatus = if (success) "Connected successfully!" else "Failed to connect. Check logs."
+                if (!success) {
+                    Toast.makeText(context, "Failed to connect. Check logs.", Toast.LENGTH_SHORT).show()
+                }
             }
         } else {
-            connectionStatus = "Permissions not granted."
+            Toast.makeText(context, "Permissions not granted.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -73,15 +77,7 @@ fun BluetoothScreen(
             enabled = !isConnecting,
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
-            Text(if (isConnecting) "Connecting..." else "Connect to First Paired Printer")
-        }
-
-        if (connectionStatus.isNotEmpty()) {
-            Text(
-                text = connectionStatus,
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+            Text(if (isConnecting) "Connecting..." else if (isConnected) "Reconnect" else "Connect to First Paired Printer")
         }
 
         Button(onClick = onNavigateBack) {

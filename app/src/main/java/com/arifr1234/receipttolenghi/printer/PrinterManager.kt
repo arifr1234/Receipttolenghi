@@ -23,6 +23,8 @@ object PrinterManager {
     private val printScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val printMutex = Mutex()
 
+    fun isConnected(): Boolean = printer != null
+
     private fun getPrinterOrThrow(): EscPosPrinter {
         return printer ?: throw IllegalStateException("Printer not connected. Please connect first.")
     }
@@ -30,6 +32,9 @@ object PrinterManager {
     fun printAsync(context: Context, block: (EscPosPrinter) -> Unit) {
         val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
             Log.e("PrinterManager", "Print error", throwable)
+            if (throwable is com.dantsu.escposprinter.exceptions.EscPosConnectionException) {
+                printer = null
+            }
             Handler(Looper.getMainLooper()).post {
                 val msg = if (throwable is IllegalStateException) throwable.message else "A printing error occurred"
                 Toast.makeText(context.applicationContext, msg, Toast.LENGTH_SHORT).show()
@@ -46,7 +51,7 @@ object PrinterManager {
 
     @SuppressLint("MissingPermission")
     suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
-        if (printer != null) return@withContext true
+        disconnect() // Always attempt a fresh connection
         try {
             val connection = BluetoothPrintersConnections.selectFirstPaired()
             if (connection != null) {

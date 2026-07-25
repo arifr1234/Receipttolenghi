@@ -17,8 +17,8 @@ Welcome! You are working on **Receipttolenghi**, an Android application that com
 3. **If you don't know which solution is preferable, ask.**
 
 ## Architecture & Implementation Rules
-1. **Global Services:** Keep hardware connections and core services (like `PrinterManager`) globally accessible to avoid unnecessary delays (e.g., reconnecting to Bluetooth on every page).
-2. **Global Error Handling:** Handle errors globally and gracefully rather than scattering try-catch blocks in the UI layers. Make error management minimal and contained. (Note: The current codebase is transitioning to this, avoid adding more localized error logs unless necessary).
+1. **Global Services & Strict APIs:** Keep hardware connections globally accessible (e.g., `PrinterManager`). Expose only what is strictly necessary to the UI; keep internal instances (`EscPosPrinter`) private to prevent modes from bypassing safety wrappers.
+2. **Global Error Handling & Concurrency:** Modes should never handle hardware exceptions or threading directly. Use centralized wrappers (like `PrinterManager.printAsync`) to automatically handle errors globally and enforce sequential execution (e.g., via `Mutex`) to prevent Bluetooth buffer collisions.
 3. **Jetpack Compose Best Practices:**
    - Hoist state where appropriate.
    - Pass `Modifier` as a parameter for all custom Composables, defaulting to `Modifier = Modifier`.

@@ -27,6 +27,7 @@ Welcome! You are working on **Receipttolenghi**, an Android application that com
 5. **Adding New Modes:**
    - UI should be modular and list-based. Adding or renaming modes should be straightforward and require minimal boilerplate.
    - Each mode should be a distinct screen component (e.g., `TestPrinterScreen`).
+6. **Printer Formatting:** When using the `dantsu` library, unless specified differently, always use `printFormattedText` with `0f` feed paper (e.g., `printer.printFormattedText(text, 0f)`) to prevent unnecessary blank space between sequentially printed items.
 
 ## General Workflow
 - Always refer back to these guidelines before making architectural changes.

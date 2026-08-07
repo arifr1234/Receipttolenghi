@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.arifr1234.receipttolenghi.ui.bluetooth.BluetoothScreen
 import com.arifr1234.receipttolenghi.ui.home.HomeScreen
+import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
 import com.arifr1234.receipttolenghi.ui.theme.ReceipttolenghiTheme
 
@@ -29,12 +30,9 @@ class MainActivity : ComponentActivity() {
         AppMode("Test Printer") { modifier, onNavigateBack ->
             TestPrinterScreen(onNavigateBack = onNavigateBack, modifier = modifier)
         },
-        AppMode("Mode 2") { modifier, onNavigateBack ->
-            // Placeholder
+        AppMode("General Print") { modifier, onNavigateBack ->
+            GeneralPrintScreen(onNavigateBack = onNavigateBack, modifier = modifier)
         },
-        AppMode("Mode 3") { modifier, onNavigateBack ->
-            // Placeholder
-        }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

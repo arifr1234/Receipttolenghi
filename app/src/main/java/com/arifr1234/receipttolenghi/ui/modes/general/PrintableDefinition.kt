@@ -13,5 +13,8 @@ interface PrintableDefinition<T : PrintableState> {
     @Composable
     fun EditorUI(state: T)
 
+    @Composable
+    fun ConfigUI(state: T) {}
+
     fun print(state: T, printer: EscPosPrinter)
 }

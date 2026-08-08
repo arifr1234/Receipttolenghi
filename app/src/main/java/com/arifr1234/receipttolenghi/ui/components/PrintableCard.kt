@@ -1,5 +1,8 @@
 package com.arifr1234.receipttolenghi.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -7,6 +10,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -21,6 +28,8 @@ fun <T : PrintableState> PrintableCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    var isConfigExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -39,8 +48,12 @@ fun <T : PrintableState> PrintableCard(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = { /* Configure action for later */ }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Configure")
+                IconButton(onClick = { isConfigExpanded = !isConfigExpanded }) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Configure",
+                        tint = if (isConfigExpanded) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                    )
                 }
                 IconButton(onClick = { /* Add to playlist action for later */ }) {
                     Icon(Icons.Default.Add, contentDescription = "Add to playlist")
@@ -53,6 +66,18 @@ fun <T : PrintableState> PrintableCard(
                     }
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Print")
+                }
+            }
+            
+            AnimatedVisibility(
+                visible = isConfigExpanded,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    definition.ConfigUI(state)
                 }
             }
         }

@@ -1,13 +1,14 @@
 package com.arifr1234.receipttolenghi.ui.modes.general
 
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.dantsu.escposprinter.EscPosPrinter
 import java.util.UUID
 
@@ -18,6 +19,9 @@ class TextState(
     override val id: String = UUID.randomUUID().toString()
     var text by mutableStateOf(text)
     var align by mutableStateOf(align)
+    var size by mutableStateOf("normal")
+    var isBold by mutableStateOf(false)
+    var isUnderline by mutableStateOf(false)
 }
 
 object TextPrintableDefinition : PrintableDefinition<TextState> {
@@ -36,7 +40,47 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         )
     }
 
+    @Composable
+    override fun ConfigUI(state: TextState) {
+        Column {
+            Text("Alignment", style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = state.align == "L", onClick = { state.align = "L" }, label = { Text("Left") })
+                FilterChip(selected = state.align == "C", onClick = { state.align = "C" }, label = { Text("Center") })
+                FilterChip(selected = state.align == "R", onClick = { state.align = "R" }, label = { Text("Right") })
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Size", style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = state.size == "normal", onClick = { state.size = "normal" }, label = { Text("Normal") })
+                FilterChip(selected = state.size == "wide", onClick = { state.size = "wide" }, label = { Text("Wide") })
+                FilterChip(selected = state.size == "tall", onClick = { state.size = "tall" }, label = { Text("Tall") })
+                FilterChip(selected = state.size == "big", onClick = { state.size = "big" }, label = { Text("Big") })
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Bold")
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(checked = state.isBold, onCheckedChange = { state.isBold = it })
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Text("Underline")
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(checked = state.isUnderline, onCheckedChange = { state.isUnderline = it })
+            }
+        }
+    }
+
     override fun print(state: TextState, printer: EscPosPrinter) {
-        printer.printFormattedText("[${state.align}]${state.text}\n", 0f)
+        val boldStart = if (state.isBold) "<b>" else ""
+        val boldEnd = if (state.isBold) "</b>" else ""
+        val ulStart = if (state.isUnderline) "<u>" else ""
+        val ulEnd = if (state.isUnderline) "</u>" else ""
+
+        val formatted = "[${state.align}]<font size='${state.size}'>$boldStart$ulStart${state.text}$ulEnd$boldEnd</font>\n"
+        printer.printFormattedText(formatted, 0f)
     }
 }

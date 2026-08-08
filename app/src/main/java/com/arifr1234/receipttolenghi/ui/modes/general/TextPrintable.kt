@@ -8,7 +8,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.dantsu.escposprinter.EscPosPrinter
 import java.util.UUID
 
@@ -32,11 +37,37 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
 
     @Composable
     override fun EditorUI(state: TextState) {
+        val textAlign = when (state.align) {
+            "C" -> TextAlign.Center
+            "R" -> TextAlign.Right
+            else -> TextAlign.Left
+        }
+        val fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal
+        val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
+        val fontSize = when (state.size) {
+            "wide" -> 16.sp
+            "tall" -> 32.sp
+            "big" -> 32.sp
+            else -> 16.sp
+        }
+        val textGeometricTransform = when (state.size) {
+            "wide" -> TextGeometricTransform(scaleX = 2f)
+            "tall" -> TextGeometricTransform(scaleX = 0.5f)
+            else -> null
+        }
+
         OutlinedTextField(
             value = state.text,
             onValueChange = { state.text = it },
             label = { Text("Enter text to print") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            textStyle = LocalTextStyle.current.copy(
+                textAlign = textAlign,
+                fontWeight = fontWeight,
+                textDecoration = textDecoration,
+                fontSize = fontSize,
+                textGeometricTransform = textGeometricTransform
+            )
         )
     }
 

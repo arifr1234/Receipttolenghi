@@ -21,19 +21,23 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.dantsu.escposprinter.EscPosPrinter
+import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import java.util.UUID
 import androidx.core.net.toUri
+import androidx.core.graphics.scale
 
 class ImageState(
     imageUri: String? = null,
     align: String = "C",
-    isDithered: Boolean = true
+    isDithered: Boolean = true,
+    size: String = "Full"
 ) : PrintableState {
     override val id: String = UUID.randomUUID().toString()
     var imageUri by mutableStateOf(imageUri)
     var align by mutableStateOf(align)
     var isDithered by mutableStateOf(isDithered)
+    var size by mutableStateOf(size)
 }
 
 object ImagePrintableDefinition : PrintableDefinition<ImageState> {
@@ -85,6 +89,14 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 Spacer(modifier = Modifier.width(8.dp))
                 Switch(checked = state.isDithered, onCheckedChange = { state.isDithered = it })
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Size", style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = state.size == "Original", onClick = { state.size = "Original" }, label = { Text("Original") })
+                FilterChip(selected = state.size == "Half", onClick = { state.size = "Half" }, label = { Text("Half") })
+                FilterChip(selected = state.size == "Full", onClick = { state.size = "Full" }, label = { Text("Full") })
+            }
         }
     }
 
@@ -95,7 +107,20 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         }
 
         val uri = uriStr.toUri()
-        val bitmap: Bitmap = try {
+        val originalBitmap = loadBitmapFromUri(context, uri)
+        
+        val maxWidth = printer.printerWidthPx
+        val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
+
+        // Bypass EscPosPrinterSize limit of 256 height by calling the command directly
+        val bytes = EscPosPrinterCommands.bitmapToBytes(scaledBitmap, state.isDithered)
+        val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
+        
+        printer.printFormattedText("[${state.align}]<img>$hexString</img>\n", 0f)
+    }
+
+    private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {
+        return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 val source = ImageDecoder.createSource(context.contentResolver, uri)
                 ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
@@ -108,9 +133,21 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         } catch (e: Exception) {
             throw IllegalStateException("Failed to load image file", e)
         }
+    }
 
-        // Convert to HEX using the library's built-in dithering (gradient parameter)
-        val hexString = PrinterTextParserImg.bitmapToHexadecimalString(printer, bitmap, state.isDithered)
-        printer.printFormattedText("[${state.align}]<img>$hexString</img>\n", 0f)
+    private fun scaleBitmapToSize(bitmap: Bitmap, maxWidth: Int, sizeMode: String): Bitmap {
+        val targetWidth = when (sizeMode) {
+            "Full" -> maxWidth
+            "Half" -> maxWidth / 2
+            "Original" -> bitmap.width.coerceAtMost(maxWidth)
+            else -> maxWidth
+        }
+
+        val targetHeight = (bitmap.height.toFloat() * (targetWidth.toFloat() / bitmap.width.toFloat())).toInt()
+
+        val finalWidth = targetWidth.coerceAtLeast(1)
+        val finalHeight = targetHeight.coerceAtLeast(1)
+
+        return bitmap.scale(finalWidth, finalHeight)
     }
 }

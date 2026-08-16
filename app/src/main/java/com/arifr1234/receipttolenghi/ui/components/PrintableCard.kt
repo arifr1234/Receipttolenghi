@@ -61,7 +61,7 @@ fun <T : PrintableState> PrintableCard(
                 IconButton(
                     onClick = {
                         PrinterManager.printAsync(context) { printer ->
-                            definition.print(state, printer)
+                            definition.print(context, state, printer)
                         }
                     }
                 ) {

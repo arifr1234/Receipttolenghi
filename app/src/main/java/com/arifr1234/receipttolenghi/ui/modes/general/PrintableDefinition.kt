@@ -1,5 +1,6 @@
 package com.arifr1234.receipttolenghi.ui.modes.general
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import com.dantsu.escposprinter.EscPosPrinter
 import kotlin.reflect.KClass
@@ -16,5 +17,5 @@ interface PrintableDefinition<T : PrintableState> {
     @Composable
     fun ConfigUI(state: T) {}
 
-    fun print(state: T, printer: EscPosPrinter)
+    fun print(context: Context, state: T, printer: EscPosPrinter)
 }

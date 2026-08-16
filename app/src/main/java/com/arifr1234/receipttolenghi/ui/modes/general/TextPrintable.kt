@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import android.content.Context
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextGeometricTransform
@@ -105,7 +106,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         }
     }
 
-    override fun print(state: TextState, printer: EscPosPrinter) {
+    override fun print(context: Context, state: TextState, printer: EscPosPrinter) {
         val boldStart = if (state.isBold) "<b>" else ""
         val boldEnd = if (state.isBold) "</b>" else ""
         val ulStart = if (state.isUnderline) "<u>" else ""

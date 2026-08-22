@@ -14,6 +14,7 @@ import com.arifr1234.receipttolenghi.ui.components.PrintableCard
 import com.arifr1234.receipttolenghi.ui.modes.general.ImageState
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
+import com.arifr1234.receipttolenghi.ui.modes.general.SpacerState
 import com.arifr1234.receipttolenghi.ui.modes.general.TextState
 
 @Composable
@@ -25,7 +26,8 @@ fun GeneralPrintScreen(
     val playlist = remember { 
         mutableStateListOf<PrintableState>(
             TextState(text = "Hello General Print!"),
-            ImageState()
+            ImageState(),
+            SpacerState()
         ) 
     }
 

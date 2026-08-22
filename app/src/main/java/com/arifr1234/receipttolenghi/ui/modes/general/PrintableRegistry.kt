@@ -3,7 +3,8 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 object PrintableRegistry {
     val allDefinitions = listOf(
         TextPrintableDefinition,
-        ImagePrintableDefinition
+        ImagePrintableDefinition,
+        SpacerPrintableDefinition
     )
 
     @Suppress("UNCHECKED_CAST")

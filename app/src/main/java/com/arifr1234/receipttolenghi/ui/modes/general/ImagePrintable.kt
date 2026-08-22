@@ -14,12 +14,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.arifr1234.receipttolenghi.printer.DitheringEngine
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
@@ -30,13 +33,13 @@ import androidx.core.graphics.scale
 class ImageState(
     imageUri: String? = null,
     align: String = "C",
-    isDithered: Boolean = true,
+    ditheringAlgorithm: String = "Floyd-Steinberg",
     size: String = "Full"
 ) : PrintableState {
     override val id: String = UUID.randomUUID().toString()
     var imageUri by mutableStateOf(imageUri)
     var align by mutableStateOf(align)
-    var isDithered by mutableStateOf(isDithered)
+    var ditheringAlgorithm by mutableStateOf(ditheringAlgorithm)
     var size by mutableStateOf(size)
 }
 
@@ -84,11 +87,33 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Dithering (Grayscale simulation)")
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(checked = state.isDithered, onCheckedChange = { state.isDithered = it })
+            Text("Dithering Algorithm", style = MaterialTheme.typography.labelMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    FilterChip(
+                        selected = state.ditheringAlgorithm == "Threshold",
+                        onClick = { state.ditheringAlgorithm = "Threshold" },
+                        label = { Text("Threshold") })
+                    FilterChip(
+                        selected = state.ditheringAlgorithm == "Bayer",
+                        onClick = { state.ditheringAlgorithm = "Bayer" },
+                        label = { Text("Bayer") })
+                    FilterChip(
+                        selected = state.ditheringAlgorithm == "Atkinson",
+                        onClick = { state.ditheringAlgorithm = "Atkinson" },
+                        label = { Text("Atkinson") })
+                    FilterChip(
+                        selected = state.ditheringAlgorithm == "Floyd-Steinberg",
+                        onClick = { state.ditheringAlgorithm = "Floyd-Steinberg" },
+                        label = { Text("Floyd-Steinberg") })
+                }
             }
+            Spacer(modifier = Modifier.height(8.dp))
 
             Spacer(modifier = Modifier.height(8.dp))
             Text("Size", style = MaterialTheme.typography.labelMedium)
@@ -111,9 +136,16 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         
         val maxWidth = printer.printerWidthPx
         val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
+        val ditheredBitmap = when (state.ditheringAlgorithm) {
+            "Threshold" -> DitheringEngine.applyThreshold(scaledBitmap)
+            "Bayer" -> DitheringEngine.applyBayer(scaledBitmap)
+            "Atkinson" -> DitheringEngine.applyAtkinson(scaledBitmap)
+            "Floyd-Steinberg" -> DitheringEngine.applyFloydSteinberg(scaledBitmap)
+            else -> DitheringEngine.applyFloydSteinberg(scaledBitmap)
+        }
 
         // Bypass EscPosPrinterSize limit of 256 height by calling the command directly
-        val bytes = EscPosPrinterCommands.bitmapToBytes(scaledBitmap, state.isDithered)
+        val bytes = EscPosPrinterCommands.bitmapToBytes(ditheredBitmap, false)
         val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
         
         printer.printFormattedText("[${state.align}]<img>$hexString</img>\n", 0f)

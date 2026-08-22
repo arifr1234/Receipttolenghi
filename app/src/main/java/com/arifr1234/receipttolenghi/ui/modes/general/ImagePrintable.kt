@@ -30,11 +30,24 @@ import java.util.UUID
 import androidx.core.net.toUri
 import androidx.core.graphics.scale
 
+enum class ImageSize(val label: String) {
+    ORIGINAL("Original"),
+    HALF("Half"),
+    FULL("Full")
+}
+
+enum class DitheringAlgorithm(val label: String, val applyAlgo: (Bitmap) -> Bitmap) {
+    THRESHOLD("Threshold", DitheringEngine::applyThreshold),
+    BAYER("Bayer", DitheringEngine::applyBayer),
+    ATKINSON("Atkinson", DitheringEngine::applyAtkinson),
+    FLOYD_STEINBERG("Floyd-Steinberg", DitheringEngine::applyFloydSteinberg)
+}
+
 class ImageState(
     imageUri: String? = null,
-    align: String = "C",
-    ditheringAlgorithm: String = "Floyd-Steinberg",
-    size: String = "Full"
+    align: PrintAlignment = PrintAlignment.CENTER,
+    ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
+    size: ImageSize = ImageSize.FULL
 ) : PrintableState {
     override val id: String = UUID.randomUUID().toString()
     var imageUri by mutableStateOf(imageUri)
@@ -81,9 +94,13 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         Column {
             Text("Alignment", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = state.align == "L", onClick = { state.align = "L" }, label = { Text("Left") })
-                FilterChip(selected = state.align == "C", onClick = { state.align = "C" }, label = { Text("Center") })
-                FilterChip(selected = state.align == "R", onClick = { state.align = "R" }, label = { Text("Right") })
+                PrintAlignment.entries.forEach { alignment ->
+                    FilterChip(
+                        selected = state.align == alignment,
+                        onClick = { state.align = alignment },
+                        label = { Text(alignment.label) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -95,22 +112,13 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    FilterChip(
-                        selected = state.ditheringAlgorithm == "Threshold",
-                        onClick = { state.ditheringAlgorithm = "Threshold" },
-                        label = { Text("Threshold") })
-                    FilterChip(
-                        selected = state.ditheringAlgorithm == "Bayer",
-                        onClick = { state.ditheringAlgorithm = "Bayer" },
-                        label = { Text("Bayer") })
-                    FilterChip(
-                        selected = state.ditheringAlgorithm == "Atkinson",
-                        onClick = { state.ditheringAlgorithm = "Atkinson" },
-                        label = { Text("Atkinson") })
-                    FilterChip(
-                        selected = state.ditheringAlgorithm == "Floyd-Steinberg",
-                        onClick = { state.ditheringAlgorithm = "Floyd-Steinberg" },
-                        label = { Text("Floyd-Steinberg") })
+                    DitheringAlgorithm.entries.forEach { algo ->
+                        FilterChip(
+                            selected = state.ditheringAlgorithm == algo,
+                            onClick = { state.ditheringAlgorithm = algo },
+                            label = { Text(algo.label) }
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -118,9 +126,13 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             Spacer(modifier = Modifier.height(8.dp))
             Text("Size", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = state.size == "Original", onClick = { state.size = "Original" }, label = { Text("Original") })
-                FilterChip(selected = state.size == "Half", onClick = { state.size = "Half" }, label = { Text("Half") })
-                FilterChip(selected = state.size == "Full", onClick = { state.size = "Full" }, label = { Text("Full") })
+                ImageSize.entries.forEach { imageSize ->
+                    FilterChip(
+                        selected = state.size == imageSize,
+                        onClick = { state.size = imageSize },
+                        label = { Text(imageSize.label) }
+                    )
+                }
             }
         }
     }
@@ -136,19 +148,13 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         
         val maxWidth = printer.printerWidthPx
         val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
-        val ditheredBitmap = when (state.ditheringAlgorithm) {
-            "Threshold" -> DitheringEngine.applyThreshold(scaledBitmap)
-            "Bayer" -> DitheringEngine.applyBayer(scaledBitmap)
-            "Atkinson" -> DitheringEngine.applyAtkinson(scaledBitmap)
-            "Floyd-Steinberg" -> DitheringEngine.applyFloydSteinberg(scaledBitmap)
-            else -> DitheringEngine.applyFloydSteinberg(scaledBitmap)
-        }
+        val ditheredBitmap = state.ditheringAlgorithm.applyAlgo(scaledBitmap)
 
         // Bypass EscPosPrinterSize limit of 256 height by calling the command directly
         val bytes = EscPosPrinterCommands.bitmapToBytes(ditheredBitmap, false)
         val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
         
-        printer.printFormattedText("[${state.align}]<img>$hexString</img>\n", 0f)
+        printer.printFormattedText("[${state.align.tag}]<img>$hexString</img>\n", 0f)
     }
 
     private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {
@@ -167,12 +173,11 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         }
     }
 
-    private fun scaleBitmapToSize(bitmap: Bitmap, maxWidth: Int, sizeMode: String): Bitmap {
+    private fun scaleBitmapToSize(bitmap: Bitmap, maxWidth: Int, sizeMode: ImageSize): Bitmap {
         val targetWidth = when (sizeMode) {
-            "Full" -> maxWidth
-            "Half" -> maxWidth / 2
-            "Original" -> bitmap.width.coerceAtMost(maxWidth)
-            else -> maxWidth
+            ImageSize.FULL -> maxWidth
+            ImageSize.HALF -> maxWidth / 2
+            ImageSize.ORIGINAL -> bitmap.width.coerceAtMost(maxWidth)
         }
 
         val targetHeight = (bitmap.height.toFloat() * (targetWidth.toFloat() / bitmap.width.toFloat())).toInt()

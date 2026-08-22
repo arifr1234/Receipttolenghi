@@ -15,17 +15,26 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
 import com.dantsu.escposprinter.EscPosPrinter
 import java.util.UUID
 
+enum class TextSize(val tag: String, val label: String, val fontSize: TextUnit, val transform: TextGeometricTransform?) {
+    NORMAL("normal", "Normal", 16.sp, null),
+    WIDE("wide", "Wide", 16.sp, TextGeometricTransform(scaleX = 2f)),
+    TALL("tall", "Tall", 32.sp, TextGeometricTransform(scaleX = 0.5f)),
+    BIG("big", "Big", 32.sp, null)
+}
+
 class TextState(
     text: String = "",
-    align: String = "L"
+    align: PrintAlignment = PrintAlignment.LEFT
 ) : PrintableState {
     override val id: String = UUID.randomUUID().toString()
     var text by mutableStateOf(text)
     var align by mutableStateOf(align)
-    var size by mutableStateOf("normal")
+    var size by mutableStateOf(TextSize.NORMAL)
     var isBold by mutableStateOf(false)
     var isUnderline by mutableStateOf(false)
 }
@@ -38,24 +47,8 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
 
     @Composable
     override fun EditorUI(state: TextState) {
-        val textAlign = when (state.align) {
-            "C" -> TextAlign.Center
-            "R" -> TextAlign.Right
-            else -> TextAlign.Left
-        }
         val fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal
         val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
-        val fontSize = when (state.size) {
-            "wide" -> 16.sp
-            "tall" -> 32.sp
-            "big" -> 32.sp
-            else -> 16.sp
-        }
-        val textGeometricTransform = when (state.size) {
-            "wide" -> TextGeometricTransform(scaleX = 2f)
-            "tall" -> TextGeometricTransform(scaleX = 0.5f)
-            else -> null
-        }
 
         OutlinedTextField(
             value = state.text,
@@ -63,11 +56,11 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
             label = { Text("Enter text to print") },
             modifier = Modifier.fillMaxWidth(),
             textStyle = LocalTextStyle.current.copy(
-                textAlign = textAlign,
+                textAlign = state.align.textAlign,
                 fontWeight = fontWeight,
                 textDecoration = textDecoration,
-                fontSize = fontSize,
-                textGeometricTransform = textGeometricTransform
+                fontSize = state.size.fontSize,
+                textGeometricTransform = state.size.transform
             )
         )
     }
@@ -77,18 +70,25 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         Column {
             Text("Alignment", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = state.align == "L", onClick = { state.align = "L" }, label = { Text("Left") })
-                FilterChip(selected = state.align == "C", onClick = { state.align = "C" }, label = { Text("Center") })
-                FilterChip(selected = state.align == "R", onClick = { state.align = "R" }, label = { Text("Right") })
+                PrintAlignment.entries.forEach { alignment ->
+                    FilterChip(
+                        selected = state.align == alignment,
+                        onClick = { state.align = alignment },
+                        label = { Text(alignment.label) }
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             Text("Size", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = state.size == "normal", onClick = { state.size = "normal" }, label = { Text("Normal") })
-                FilterChip(selected = state.size == "wide", onClick = { state.size = "wide" }, label = { Text("Wide") })
-                FilterChip(selected = state.size == "tall", onClick = { state.size = "tall" }, label = { Text("Tall") })
-                FilterChip(selected = state.size == "big", onClick = { state.size = "big" }, label = { Text("Big") })
+                TextSize.entries.forEach { textSize ->
+                    FilterChip(
+                        selected = state.size == textSize,
+                        onClick = { state.size = textSize },
+                        label = { Text(textSize.label) }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -112,7 +112,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         val ulStart = if (state.isUnderline) "<u>" else ""
         val ulEnd = if (state.isUnderline) "</u>" else ""
 
-        val formatted = "[${state.align}]<font size='${state.size}'>$boldStart$ulStart${state.text}$ulEnd$boldEnd</font>\n"
+        val formatted = "[${state.align.tag}]<font size='${state.size.tag}'>$boldStart$ulStart${state.text}$ulEnd$boldEnd</font>\n"
         printer.printFormattedText(formatted, 0f)
     }
 }

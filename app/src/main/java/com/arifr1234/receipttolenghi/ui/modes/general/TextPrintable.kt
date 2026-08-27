@@ -27,8 +27,7 @@ enum class TextSize(val tag: String, val label: String, val fontSize: TextUnit, 
 
 class TextState(
     text: String = "",
-    align: PrintAlignment = PrintAlignment.LEFT,
-    val clearAfterSend: Boolean = true
+    align: PrintAlignment = PrintAlignment.LEFT
 ) : PrintableState {
     override val id: String = UUID.randomUUID().toString()
     var text by mutableStateOf(text)
@@ -113,9 +112,9 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
 
         val formatted = "[${state.align.tag}]<font size='${state.size.tag}'>$boldStart$ulStart${state.text}$ulEnd$boldEnd</font>\n"
         printer.printFormattedText(formatted, 0f)
-        
-        if (state.clearAfterSend) {
-            state.text = ""
-        }
+    }
+
+    override fun clearState(state: TextState) {
+        state.text = ""
     }
 }

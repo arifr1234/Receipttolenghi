@@ -25,7 +25,9 @@ import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
 fun <T : PrintableState> PrintableCard(
     definition: PrintableDefinition<T>,
     state: T,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    clearAfterPrint: Boolean = false,
+    isReadOnly: Boolean = false
 ) {
     val context = LocalContext.current
     var isConfigExpanded by remember { mutableStateOf(false) }
@@ -40,7 +42,9 @@ fun <T : PrintableState> PrintableCard(
             Spacer(modifier = Modifier.height(8.dp))
             
             // The dynamic UI editor for this state
-            definition.EditorUI(state)
+            ReadOnlyBox(isReadOnly = isReadOnly) {
+                definition.EditorUI(state)
+            }
             
             Spacer(modifier = Modifier.height(8.dp))
             
@@ -62,6 +66,9 @@ fun <T : PrintableState> PrintableCard(
                     onClick = {
                         PrinterManager.printAsync(context) { printer ->
                             definition.print(context, state, printer)
+                            if (clearAfterPrint) {
+                                definition.clearState(state)
+                            }
                         }
                     }
                 ) {
@@ -77,7 +84,9 @@ fun <T : PrintableState> PrintableCard(
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(8.dp))
-                    definition.ConfigUI(state)
+                    ReadOnlyBox(isReadOnly = isReadOnly) {
+                        definition.ConfigUI(state)
+                    }
                 }
             }
         }

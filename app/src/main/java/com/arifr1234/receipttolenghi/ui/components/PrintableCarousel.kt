@@ -90,7 +90,8 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
             PrintableCard(
                 definition = definition,
                 state = state,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                clearAfterPrint = true
             )
         }
 

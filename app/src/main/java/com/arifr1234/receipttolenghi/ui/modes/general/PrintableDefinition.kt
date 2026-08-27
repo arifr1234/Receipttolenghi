@@ -25,4 +25,6 @@ interface PrintableDefinition<T : PrintableState> {
     fun ConfigUI(state: T) {}
 
     fun print(context: Context, state: T, printer: EscPosPrinter)
+    
+    fun clearState(state: T) {}
 }

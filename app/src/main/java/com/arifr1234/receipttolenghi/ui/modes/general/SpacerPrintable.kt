@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -28,14 +27,11 @@ enum class SpacerStyle(val char: String?) {
     HASH("#")
 }
 
-class SpacerState(
-    style: SpacerStyle = SpacerStyle.DASH,
-    lines: Int = 1
-) : PrintableState {
+data class SpacerState(
+    val style: SpacerStyle = SpacerStyle.DASH,
+    val lines: Int = 1,
     override val id: String = UUID.randomUUID().toString()
-    var style by mutableStateOf(style)
-    var lines by mutableIntStateOf(lines)
-}
+) : PrintableState
 
 object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
     override val name = "Spacer"
@@ -44,7 +40,7 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
     override fun createDefaultState() = SpacerState()
 
     @Composable
-    override fun EditorUI(state: SpacerState) {
+    override fun EditorUI(state: SpacerState, onStateChange: (SpacerState) -> Unit) {
         Column {
             Text("Border Style", style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(8.dp))
@@ -65,7 +61,7 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
                                 Text(text = text, maxLines = 1, overflow = TextOverflow.Clip)
                             },
                             onClick = { 
-                                state.style = style
+                                onStateChange(state.copy(style = style))
                                 expanded = false
                             }
                         )
@@ -78,7 +74,7 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Trailing Blank Lines:", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
                 
-                IconButton(onClick = { if (state.lines > 0) state.lines-- }) {
+                IconButton(onClick = { if (state.lines > 0) onStateChange(state.copy(lines = state.lines - 1)) }) {
                     Text("-", style = MaterialTheme.typography.titleLarge)
                 }
                 
@@ -89,7 +85,7 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
                     textAlign = TextAlign.Center
                 )
                 
-                IconButton(onClick = { if (state.lines < 10) state.lines++ }) {
+                IconButton(onClick = { if (state.lines < 10) onStateChange(state.copy(lines = state.lines + 1)) }) {
                     Text("+", style = MaterialTheme.typography.titleLarge)
                 }
             }

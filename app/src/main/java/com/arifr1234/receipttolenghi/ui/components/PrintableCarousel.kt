@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -35,7 +36,11 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
 
     // Preserve draft states for each definition so user doesn't lose input when swiping
     val draftStates = remember {
-        definitions.associateWith { it.createDefaultState() }
+        mutableStateMapOf<String, PrintableState>().apply {
+            definitions.forEach { def ->
+                put(def.name, def.createDefaultState())
+            }
+        }
     }
     
     // Dismiss keyboard and clear focus when swiping to a different card
@@ -83,14 +88,17 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
                 .animateContentSize(alignment = Alignment.BottomCenter),
             verticalAlignment = Alignment.Bottom
         ) { page ->
+            // We use an unchecked cast because we know the map is populated safely above
             @Suppress("UNCHECKED_CAST")
             val definition = definitions[page] as PrintableDefinition<PrintableState>
-            val state = draftStates[definitions[page]]!!
-            
+
             PrintableCard(
-                definition = definition,
-                state = state,
                 modifier = Modifier.fillMaxWidth(),
+                state = draftStates[definition.name] ?: return@HorizontalPager,
+                onStateChange = { newState ->
+                    draftStates[definition.name] = newState
+                },
+                definition = definition,
                 clearAfterPrint = true
             )
         }

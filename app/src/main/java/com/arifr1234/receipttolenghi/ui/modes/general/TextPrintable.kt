@@ -3,9 +3,6 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -21,21 +18,18 @@ import java.util.UUID
 enum class TextSize(val tag: String, val label: String, val fontSize: TextUnit, val transform: TextGeometricTransform?) {
     NORMAL("normal", "Normal", 16.sp, null),
     WIDE("wide", "Wide", 16.sp, TextGeometricTransform(scaleX = 2f)),
-    TALL("tall", "Tall", 32.sp, TextGeometricTransform(scaleX = 0.5f)),
+    TALLke("tall", "Tall", 32.sp, TextGeometricTransform(scaleX = 0.5f)),
     BIG("big", "Big", 32.sp, null)
 }
 
-class TextState(
-    text: String = "",
-    align: PrintAlignment = PrintAlignment.LEFT
-) : PrintableState {
+data class TextState(
+    val text: String = "",
+    val align: PrintAlignment = PrintAlignment.LEFT,
+    val size: TextSize = TextSize.NORMAL,
+    val isBold: Boolean = false,
+    val isUnderline: Boolean = false,
     override val id: String = UUID.randomUUID().toString()
-    var text by mutableStateOf(text)
-    var align by mutableStateOf(align)
-    var size by mutableStateOf(TextSize.NORMAL)
-    var isBold by mutableStateOf(false)
-    var isUnderline by mutableStateOf(false)
-}
+) : PrintableState
 
 object TextPrintableDefinition : PrintableDefinition<TextState> {
     override val name = "Text"
@@ -44,13 +38,13 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
     override fun createDefaultState() = TextState()
 
     @Composable
-    override fun EditorUI(state: TextState) {
+    override fun EditorUI(state: TextState, onStateChange: (TextState) -> Unit) {
         val fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal
         val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
 
         OutlinedTextField(
             value = state.text,
-            onValueChange = { state.text = it },
+            onValueChange = { onStateChange(state.copy(text = it)) },
             label = { Text("Enter text to print") },
             modifier = Modifier.fillMaxWidth(),
             textStyle = LocalTextStyle.current.copy(
@@ -64,14 +58,14 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
     }
 
     @Composable
-    override fun ConfigUI(state: TextState) {
+    override fun ConfigUI(state: TextState, onStateChange: (TextState) -> Unit) {
         Column {
             Text("Alignment", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PrintAlignment.entries.forEach { alignment ->
                     FilterChip(
                         selected = state.align == alignment,
-                        onClick = { state.align = alignment },
+                        onClick = { onStateChange(state.copy(align = alignment)) },
                         label = { Text(alignment.label) }
                     )
                 }
@@ -83,7 +77,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
                 TextSize.entries.forEach { textSize ->
                     FilterChip(
                         selected = state.size == textSize,
-                        onClick = { state.size = textSize },
+                        onClick = { onStateChange(state.copy(size = textSize)) },
                         label = { Text(textSize.label) }
                     )
                 }
@@ -93,13 +87,13 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Bold")
                 Spacer(modifier = Modifier.width(8.dp))
-                Switch(checked = state.isBold, onCheckedChange = { state.isBold = it })
+                Switch(checked = state.isBold, onCheckedChange = { onStateChange(state.copy(isBold = it)) })
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 Text("Underline")
                 Spacer(modifier = Modifier.width(8.dp))
-                Switch(checked = state.isUnderline, onCheckedChange = { state.isUnderline = it })
+                Switch(checked = state.isUnderline, onCheckedChange = { onStateChange(state.copy(isUnderline = it)) })
             }
         }
     }
@@ -114,7 +108,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         printer.printFormattedText(formatted, 0f)
     }
 
-    override fun clearState(state: TextState) {
-        state.text = ""
+    override fun clearState(state: TextState): TextState {
+        return state.copy(text = "")
     }
 }

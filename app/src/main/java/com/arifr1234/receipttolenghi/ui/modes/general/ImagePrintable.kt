@@ -12,10 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Modifier
@@ -43,18 +40,13 @@ enum class DitheringAlgorithm(val label: String, val applyAlgo: (Bitmap) -> Bitm
     FLOYD_STEINBERG("Floyd-Steinberg", DitheringEngine::applyFloydSteinberg)
 }
 
-class ImageState(
-    imageUri: String? = null,
-    align: PrintAlignment = PrintAlignment.CENTER,
-    ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
-    size: ImageSize = ImageSize.FULL
-) : PrintableState {
+data class ImageState(
+    val imageUri: String? = null,
+    val align: PrintAlignment = PrintAlignment.CENTER,
+    val ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
+    val size: ImageSize = ImageSize.FULL,
     override val id: String = UUID.randomUUID().toString()
-    var imageUri by mutableStateOf(imageUri)
-    var align by mutableStateOf(align)
-    var ditheringAlgorithm by mutableStateOf(ditheringAlgorithm)
-    var size by mutableStateOf(size)
-}
+) : PrintableState
 
 object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     override val name = "Image"
@@ -63,11 +55,11 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     override fun createDefaultState() = ImageState()
 
     @Composable
-    override fun EditorUI(state: ImageState) {
+    override fun EditorUI(state: ImageState, onStateChange: (ImageState) -> Unit) {
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
-            uri?.let { state.imageUri = it.toString() }
+            uri?.let { onStateChange(state.copy(imageUri = it.toString())) }
         }
 
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -90,14 +82,14 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     }
 
     @Composable
-    override fun ConfigUI(state: ImageState) {
+    override fun ConfigUI(state: ImageState, onStateChange: (ImageState) -> Unit) {
         Column {
             Text("Alignment", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PrintAlignment.entries.forEach { alignment ->
                     FilterChip(
                         selected = state.align == alignment,
-                        onClick = { state.align = alignment },
+                        onClick = { onStateChange(state.copy(align = alignment)) },
                         label = { Text(alignment.label) }
                     )
                 }
@@ -115,7 +107,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     DitheringAlgorithm.entries.forEach { algo ->
                         FilterChip(
                             selected = state.ditheringAlgorithm == algo,
-                            onClick = { state.ditheringAlgorithm = algo },
+                            onClick = { onStateChange(state.copy(ditheringAlgorithm = algo)) },
                             label = { Text(algo.label) }
                         )
                     }
@@ -129,7 +121,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 ImageSize.entries.forEach { imageSize ->
                     FilterChip(
                         selected = state.size == imageSize,
-                        onClick = { state.size = imageSize },
+                        onClick = { onStateChange(state.copy(size = imageSize)) },
                         label = { Text(imageSize.label) }
                     )
                 }

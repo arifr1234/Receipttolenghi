@@ -19,12 +19,12 @@ interface PrintableDefinition<T : PrintableState> {
     fun createDefaultState(): T
 
     @Composable
-    fun EditorUI(state: T)
+    fun EditorUI(state: T, onStateChange: (T) -> Unit)
 
     @Composable
-    fun ConfigUI(state: T) {}
+    fun ConfigUI(state: T, onStateChange: (T) -> Unit) {}
 
     fun print(context: Context, state: T, printer: EscPosPrinter)
     
-    fun clearState(state: T) {}
+    fun clearState(state: T): T = state
 }

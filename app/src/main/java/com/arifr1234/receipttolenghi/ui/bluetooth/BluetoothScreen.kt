@@ -2,7 +2,6 @@ package com.arifr1234.receipttolenghi.ui.bluetooth
 
 import android.Manifest
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -20,9 +19,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.arifr1234.receipttolenghi.printer.PrinterManager
+import com.arifr1234.receipttolenghi.utils.AppErrorHandler
 import kotlinx.coroutines.launch
 
 @Composable
@@ -33,7 +32,6 @@ fun BluetoothScreen(
     var isConnecting by remember { mutableStateOf(false) }
     val isConnected = PrinterManager.isConnected()
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_SCAN)
@@ -48,14 +46,11 @@ fun BluetoothScreen(
         if (allGranted) {
             coroutineScope.launch {
                 isConnecting = true
-                val success = PrinterManager.connect()
+                PrinterManager.connect()
                 isConnecting = false
-                if (!success) {
-                    Toast.makeText(context, "Failed to connect. Check logs.", Toast.LENGTH_SHORT).show()
-                }
             }
         } else {
-            Toast.makeText(context, "Permissions not granted.", Toast.LENGTH_SHORT).show()
+            AppErrorHandler.handleError(SecurityException("Permissions not granted."))
         }
     }
 

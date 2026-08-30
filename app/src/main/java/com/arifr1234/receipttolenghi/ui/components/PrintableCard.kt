@@ -65,7 +65,7 @@ fun <T : PrintableState> PrintableCard(
                 }
                 IconButton(
                     onClick = {
-                        PrinterManager.printAsync(context) { printer ->
+                        PrinterManager.printAsync { printer ->
                             definition.print(context, state, printer)
                             if (clearAfterPrint) {
                                 onStateChange(definition.clearState(state))

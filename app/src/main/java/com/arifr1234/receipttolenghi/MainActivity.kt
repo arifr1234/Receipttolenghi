@@ -8,7 +8,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,6 +22,7 @@ import com.arifr1234.receipttolenghi.ui.home.HomeScreen
 import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
 import com.arifr1234.receipttolenghi.ui.theme.ReceipttolenghiTheme
+import com.arifr1234.receipttolenghi.utils.AppErrorHandler
 
 class MainActivity : ComponentActivity() {
     data class AppMode(
@@ -51,7 +55,18 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                LaunchedEffect(Unit) {
+                    AppErrorHandler.errorMessages.collect { message ->
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+                ) { innerPadding ->
                     val selectedMode = APP_MODES.find { it.name == currentScreen }
                     
                     if (selectedMode != null) {

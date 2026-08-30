@@ -36,7 +36,7 @@ fun TestPrinterScreen(
 
         Button(
             onClick = {
-                PrinterManager.printAsync(context) { printer ->
+                PrinterManager.printAsync { printer ->
                     printer.printFormattedText(
                         "[C]<font size='big'>TEST PRINT</font>\n" +
                         "[C]Receipttolenghi App\n" +

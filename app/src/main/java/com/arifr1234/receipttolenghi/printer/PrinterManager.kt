@@ -1,14 +1,9 @@
 package com.arifr1234.receipttolenghi.printer
 
 import android.annotation.SuppressLint
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
-import android.widget.Toast
+import com.arifr1234.receipttolenghi.utils.AppErrorHandler
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,52 +24,46 @@ object PrinterManager {
         return printer ?: throw IllegalStateException("Printer not connected. Please connect first.")
     }
 
-    fun printAsync(context: Context, block: (EscPosPrinter) -> Unit) {
-        val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-            Log.e("PrinterManager", "Print error", throwable)
-            if (throwable is com.dantsu.escposprinter.exceptions.EscPosConnectionException) {
-                printer = null
-            }
-            Handler(Looper.getMainLooper()).post {
-                val msg = if (throwable is IllegalStateException) throwable.message else "A printing error occurred"
-                Toast.makeText(context.applicationContext, msg, Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        printScope.launch(exceptionHandler) {
-            printMutex.withLock {
-                val p = getPrinterOrThrow()
-                block(p)
+    fun printAsync(block: (EscPosPrinter) -> Unit) {
+        printScope.launch {
+            runCatching {
+                AppErrorHandler.runWithGlobalLog("A printing error occurred") {
+                    printMutex.withLock {
+                        val p = getPrinterOrThrow()
+                        block(p)
+                    }
+                }
+            }.onFailure { throwable ->
+                if (throwable is com.dantsu.escposprinter.exceptions.EscPosConnectionException) {
+                    printer = null
+                }
             }
         }
     }
 
     @SuppressLint("MissingPermission")
     suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
-        disconnect() // Always attempt a fresh connection
-        try {
-            val connection = BluetoothPrintersConnections.selectFirstPaired()
-            if (connection != null) {
-                // Initialize the printer globally
-                printer = EscPosPrinter(connection, 203, 48f, 32)
-                true
-            } else {
-                Log.e("PrinterManager", "No paired printer found")
-                false
+        runCatching {
+            AppErrorHandler.runWithGlobalLog("Error connecting to printer") {
+                disconnect() // Always attempt a fresh connection
+                val connection = BluetoothPrintersConnections.selectFirstPaired()
+                if (connection != null) {
+                    // Initialize the printer globally
+                    printer = EscPosPrinter(connection, 203, 48f, 32)
+                    true
+                } else {
+                    AppErrorHandler.handleError(IllegalStateException("No paired printer found"))
+                    false
+                }
             }
-        } catch (e: Exception) {
-            Log.e("PrinterManager", "Error connecting to printer", e)
-            false
-        }
+        }.getOrDefault(false)
     }
 
     fun disconnect() {
-        try {
-            printer?.disconnectPrinter()
-        } catch (e: Exception) {
-            Log.e("PrinterManager", "Error disconnecting", e)
-        } finally {
-            printer = null
-        }
+        runCatching {
+            AppErrorHandler.runWithGlobalLog("Error disconnecting from printer") {
+                printer?.disconnectPrinter()
+            }
+        }.also { printer = null }
     }
 }

@@ -13,7 +13,7 @@ enum class PrintAlignment(val tag: String, val label: String, val textAlign: Tex
 }
 
 interface PrintableDefinition<T : PrintableState> {
-    val name: String
+    val displayName: String
     val stateClass: KClass<T>
 
     fun createDefaultState(): T

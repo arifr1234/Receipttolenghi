@@ -32,7 +32,7 @@ data class TextState(
 ) : PrintableState
 
 object TextPrintableDefinition : PrintableDefinition<TextState> {
-    override val name = "Text"
+    override val displayName = "Text"
     override val stateClass = TextState::class
 
     override fun createDefaultState() = TextState()

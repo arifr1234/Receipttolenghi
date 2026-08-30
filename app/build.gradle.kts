@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.escpos.thermalprinter.android)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.coil.compose)
+    implementation(libs.gson)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

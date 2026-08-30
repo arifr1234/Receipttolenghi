@@ -20,25 +20,26 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.arifr1234.receipttolenghi.ui.modes.general.PrintableDefinition
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
+import com.arifr1234.receipttolenghi.ui.modes.general.PrintableType
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrintableCarousel(modifier: Modifier = Modifier) {
-    val definitions = PrintableRegistry.allDefinitions
-    val pagerState = rememberPagerState(pageCount = { definitions.size })
+    val types = PrintableType.entries
+    val pagerState = rememberPagerState(pageCount = { types.size })
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
     // Preserve draft states for each definition so user doesn't lose input when swiping
     val draftStates = remember {
-        mutableStateMapOf<String, PrintableState>().apply {
-            definitions.forEach { def ->
-                put(def.name, def.createDefaultState())
+        mutableStateMapOf<PrintableType, PrintableState>().apply {
+            types.forEach { type ->
+                put(type, type.definition.createDefaultState())
             }
         }
     }
@@ -57,7 +58,7 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
             containerColor = Color.Transparent,
             divider = {}
         ) {
-            definitions.forEachIndexed { index, def ->
+            types.forEachIndexed { index, type ->
                 Tab(
                     selected = pagerState.currentPage == index,
                     onClick = {
@@ -67,7 +68,7 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
                     },
                     text = { 
                         Text(
-                            text = def.name,
+                            text = type.definition.displayName,
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -88,17 +89,16 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
                 .animateContentSize(alignment = Alignment.BottomCenter),
             verticalAlignment = Alignment.Bottom
         ) { page ->
-            // We use an unchecked cast because we know the map is populated safely above
-            @Suppress("UNCHECKED_CAST")
-            val definition = definitions[page] as PrintableDefinition<PrintableState>
-
             PrintableCard(
                 modifier = Modifier.fillMaxWidth(),
-                state = draftStates[definition.name] ?: return@HorizontalPager,
+                state = draftStates[types[page]] ?: return@HorizontalPager,
                 onStateChange = { newState ->
-                    draftStates[definition.name] = newState
+                    draftStates[types[page]] = newState
                 },
-                definition = definition,
+                onPrintSuccess = { printedState ->
+                    PlaylistManager.addStateToHistory(printedState)
+                },
+                definition = PrintableRegistry.getTypedDefinitionFor(types[page]),
                 clearAfterPrint = true
             )
         }
@@ -110,7 +110,7 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            repeat(definitions.size) { iteration ->
+            repeat(types.size) { iteration ->
                 val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                 Box(
                     modifier = Modifier

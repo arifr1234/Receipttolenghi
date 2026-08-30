@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onNavigateToBluetooth: () -> Unit,
-    onNavigateToMode: (String) -> Unit,
-    modes: List<String>
+    onNavigateToMode: (com.arifr1234.receipttolenghi.AppRoute) -> Unit,
+    modes: List<com.arifr1234.receipttolenghi.AppRoute>
 ) {
 
     Column(
@@ -59,7 +59,7 @@ fun HomeScreen(
                         .clickable { onNavigateToMode(mode) }
                 ) {
                     Text(
-                        text = mode,
+                        text = mode.title,
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.titleMedium
                     )

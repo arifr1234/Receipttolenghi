@@ -49,7 +49,7 @@ data class ImageState(
 ) : PrintableState
 
 object ImagePrintableDefinition : PrintableDefinition<ImageState> {
-    override val name = "Image"
+    override val displayName = "Image"
     override val stateClass = ImageState::class
 
     override fun createDefaultState() = ImageState()

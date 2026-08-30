@@ -21,37 +21,46 @@ import com.arifr1234.receipttolenghi.ui.bluetooth.BluetoothScreen
 import com.arifr1234.receipttolenghi.ui.home.HomeScreen
 import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.theme.ReceipttolenghiTheme
 import com.arifr1234.receipttolenghi.utils.AppErrorHandler
 
+enum class AppRoute(val title: String) {
+    HOME("Home"),
+    BLUETOOTH("Bluetooth"),
+    TEST_PRINTER("Test Printer"),
+    GENERAL_PRINT("General Print")
+}
+
 class MainActivity : ComponentActivity() {
     data class AppMode(
-        val name: String,
+        val route: AppRoute,
         val content: @Composable (modifier: Modifier, onNavigateBack: () -> Unit) -> Unit
     )
 
     private val APP_MODES = listOf(
-        AppMode("Test Printer") { modifier, onNavigateBack ->
+        AppMode(AppRoute.TEST_PRINTER) { modifier, onNavigateBack ->
             TestPrinterScreen(onNavigateBack = onNavigateBack, modifier = modifier)
         },
-        AppMode("General Print") { modifier, onNavigateBack ->
+        AppMode(AppRoute.GENERAL_PRINT) { modifier, onNavigateBack ->
             GeneralPrintScreen(onNavigateBack = onNavigateBack, modifier = modifier)
         },
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PlaylistManager.init(this)
         enableEdgeToEdge()
         setContent {
             ReceipttolenghiTheme(
                 darkTheme = true,
                 dynamicColor = false
             ) {
-                var currentScreen by remember { mutableStateOf("home") }
+                var currentScreen by remember { mutableStateOf(AppRoute.HOME) }
 
-                if (currentScreen != "home") {
+                if (currentScreen != AppRoute.HOME) {
                     BackHandler {
-                        currentScreen = "home"
+                        currentScreen = AppRoute.HOME
                     }
                 }
 
@@ -67,23 +76,23 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
                 ) { innerPadding ->
-                    val selectedMode = APP_MODES.find { it.name == currentScreen }
+                    val selectedMode = APP_MODES.find { it.route == currentScreen }
                     
                     if (selectedMode != null) {
-                        selectedMode.content(Modifier.padding(innerPadding)) { currentScreen = "home" }
+                        selectedMode.content(Modifier.padding(innerPadding)) { currentScreen = AppRoute.HOME }
                     } else {
                         when (currentScreen) {
-                            "bluetooth" -> BluetoothScreen(
+                            AppRoute.BLUETOOTH -> BluetoothScreen(
                                 modifier = Modifier.padding(innerPadding),
-                                onNavigateBack = { currentScreen = "home" }
+                                onNavigateBack = { currentScreen = AppRoute.HOME }
                             )
                             else -> {
                                 // Default fallback (home)
                                 HomeScreen(
                                     modifier = Modifier.padding(innerPadding),
-                                    onNavigateToBluetooth = { currentScreen = "bluetooth" },
-                                    onNavigateToMode = { mode -> currentScreen = mode },
-                                    modes = APP_MODES.map { it.name }
+                                    onNavigateToBluetooth = { currentScreen = AppRoute.BLUETOOTH },
+                                    onNavigateToMode = { route -> currentScreen = route },
+                                    modes = APP_MODES.map { it.route }
                                 )
                             }
                         }

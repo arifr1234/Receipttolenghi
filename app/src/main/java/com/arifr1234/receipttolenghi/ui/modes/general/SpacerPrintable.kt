@@ -34,7 +34,7 @@ data class SpacerState(
 ) : PrintableState
 
 object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
-    override val name = "Spacer"
+    override val displayName = "Spacer"
     override val stateClass = SpacerState::class
 
     override fun createDefaultState() = SpacerState()

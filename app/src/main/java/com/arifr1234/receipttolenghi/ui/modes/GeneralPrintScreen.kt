@@ -1,16 +1,21 @@
 package com.arifr1234.receipttolenghi.ui.modes
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.arifr1234.receipttolenghi.ui.components.PrintableCard
 import com.arifr1234.receipttolenghi.ui.components.PrintableCarousel
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
+import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +51,32 @@ fun GeneralPrintScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .verticalScroll(rememberScrollState())
             ) {
+                val history by PlaylistManager.history.collectAsState()
+                
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.Bottom,
+                    reverseLayout = true
+                ) {
+                    items(history, key = { it.id }) { item ->
+                        PrintableCard(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            state = item.state,
+                            definition = PrintableRegistry.getTypedDefinitionFor(item.state),
+                            isReadOnly = true,
+                            onPrintSuccess = { printedState ->
+                                PlaylistManager.addStateToHistory(printedState)
+                            }
+                        )
+                    }
+                }
+                
                 PrintableCarousel(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
                 )
             }
         }

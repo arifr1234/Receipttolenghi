@@ -26,6 +26,7 @@ fun <T : PrintableState> PrintableCard(
     modifier: Modifier = Modifier,
     state: T,
     onStateChange: (T) -> Unit = {},
+    onPrintSuccess: (T) -> Unit = {},
     definition: PrintableDefinition<T>,
     clearAfterPrint: Boolean = false,
     isReadOnly: Boolean = false
@@ -39,7 +40,7 @@ fun <T : PrintableState> PrintableCard(
             .padding(vertical = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(definition.name, style = MaterialTheme.typography.titleMedium)
+            Text(definition.displayName, style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             
             // The dynamic UI editor for this state
@@ -67,6 +68,7 @@ fun <T : PrintableState> PrintableCard(
                     onClick = {
                         PrinterManager.printAsync { printer ->
                             definition.print(context, state, printer)
+                            onPrintSuccess(state)
                             if (clearAfterPrint) {
                                 onStateChange(definition.clearState(state))
                             }

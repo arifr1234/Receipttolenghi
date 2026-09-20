@@ -30,7 +30,6 @@ fun BluetoothScreen(
     modifier: Modifier = Modifier
 ) {
     var isConnecting by remember { mutableStateOf(false) }
-    val isConnected = PrinterManager.isConnected()
     val coroutineScope = rememberCoroutineScope()
 
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -72,7 +71,21 @@ fun BluetoothScreen(
             enabled = !isConnecting,
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
-            Text(if (isConnecting) "Connecting..." else if (isConnected) "Reconnect" else "Connect to First Paired Printer")
+            Text(if (isConnecting) "Connecting..." else "Connect to First Paired Printer")
+        }
+
+        Button(
+            onClick = {
+                coroutineScope.launch {
+                    isConnecting = true
+                    PrinterManager.connect(isMock = true)
+                    isConnecting = false
+                }
+            },
+            enabled = !isConnecting,
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            Text("Connect to Mock Printer")
         }
 
         Button(onClick = onNavigateBack) {

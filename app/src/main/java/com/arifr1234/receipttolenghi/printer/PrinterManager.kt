@@ -42,11 +42,17 @@ object PrinterManager {
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun connect(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun connect(isMock: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             AppErrorHandler.runWithGlobalLog("Error connecting to printer") {
                 disconnect() // Always attempt a fresh connection
-                val connection = BluetoothPrintersConnections.selectFirstPaired()
+                
+                val connection = if (isMock) {
+                    MockConnection()
+                } else {
+                    BluetoothPrintersConnections.selectFirstPaired()
+                }
+                
                 if (connection != null) {
                     // Initialize the printer globally
                     printer = EscPosPrinter(connection, 203, 48f, 32)

@@ -25,6 +25,13 @@ object AppErrorHandler {
     }
 
     /**
+     * Shows a generic global snackbar message (e.g. for success notifications).
+     */
+    fun showMessage(message: String) {
+        _errorMessages.tryEmit(message)
+    }
+
+    /**
      * Interceptor Wrapper: 
      * Executes the block. If it fails, logs/broadcasts the error globally, then re-throws it.
      */

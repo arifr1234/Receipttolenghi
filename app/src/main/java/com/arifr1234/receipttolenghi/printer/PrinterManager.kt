@@ -56,6 +56,8 @@ object PrinterManager {
                 if (connection != null) {
                     // Initialize the printer globally
                     printer = EscPosPrinter(connection, 203, 48f, 32)
+                    val printerType = if (isMock) "Mock Printer" else "Printer"
+                    AppErrorHandler.showMessage("Connected to $printerType!")
                     true
                 } else {
                     AppErrorHandler.handleError(IllegalStateException("No paired printer found"))

@@ -1,12 +1,14 @@
 package com.arifr1234.receipttolenghi.ui.modes.general
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import android.content.Context
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextGeometricTransform
 import androidx.compose.ui.unit.dp
@@ -42,18 +44,28 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         val fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal
         val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
 
-        OutlinedTextField(
+        BasicTextField(
             value = state.text,
             onValueChange = { onStateChange(state.copy(text = it)) },
-            label = { Text("Enter text to print") },
             modifier = Modifier.fillMaxWidth(),
             textStyle = LocalTextStyle.current.copy(
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = state.align.textAlign,
                 fontWeight = fontWeight,
                 textDecoration = textDecoration,
                 fontSize = state.size.fontSize,
                 textGeometricTransform = state.size.transform
-            )
+            ),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    innerTextField()
+                }
+            }
         )
     }
 

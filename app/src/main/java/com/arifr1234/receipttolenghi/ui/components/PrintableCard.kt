@@ -35,11 +35,9 @@ fun <T : PrintableState> PrintableCard(
     var isConfigExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+        modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
+        Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)) {
             // The dynamic UI editor for this state
             ReadOnlyBox(isReadOnly = isReadOnly) {
                 definition.EditorUI(state, onStateChange)

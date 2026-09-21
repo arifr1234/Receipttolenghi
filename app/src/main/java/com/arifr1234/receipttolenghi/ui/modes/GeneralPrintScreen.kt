@@ -56,13 +56,13 @@ fun GeneralPrintScreen(
                 
                 LazyColumn(
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.Bottom,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
                     reverseLayout = true
                 ) {
                     items(history, key = { it.id }) { item ->
                         PrintableCard(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                            modifier = Modifier.fillMaxWidth(),
                             state = item.state,
                             definition = PrintableRegistry.getTypedDefinitionFor(item.state),
                             isReadOnly = true,
@@ -76,7 +76,7 @@ fun GeneralPrintScreen(
                 PrintableCarousel(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
                 )
             }
         }

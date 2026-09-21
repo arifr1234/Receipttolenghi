@@ -61,6 +61,7 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
             types.forEachIndexed { index, type ->
                 Tab(
                     selected = pagerState.currentPage == index,
+                    modifier = Modifier.height(32.dp),
                     onClick = {
                         coroutineScope.launch {
                             pagerState.animateScrollToPage(index)
@@ -77,8 +78,8 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
                 )
             }
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Swipeable Carousel
         HorizontalPager(

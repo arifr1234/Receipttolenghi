@@ -27,7 +27,7 @@ object PrinterManager {
     fun printAsync(block: (EscPosPrinter) -> Unit) {
         printScope.launch {
             runCatching {
-                AppErrorHandler.runWithGlobalLog("A printing error occurred") {
+                AppErrorHandler.runWithGlobalLog {
                     printMutex.withLock {
                         val p = getPrinterOrThrow()
                         block(p)

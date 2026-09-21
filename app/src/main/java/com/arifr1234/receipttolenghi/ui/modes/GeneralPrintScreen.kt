@@ -53,8 +53,16 @@ fun GeneralPrintScreen(
                     .align(Alignment.BottomCenter)
             ) {
                 val history by PlaylistManager.history.collectAsState()
+                val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                
+                androidx.compose.runtime.LaunchedEffect(history.size) {
+                    if (history.isNotEmpty()) {
+                        listState.animateScrollToItem(0)
+                    }
+                }
                 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),

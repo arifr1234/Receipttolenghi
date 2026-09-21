@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
@@ -26,6 +27,7 @@ import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import java.util.UUID
 import androidx.core.net.toUri
 import androidx.core.graphics.scale
+import com.arifr1234.receipttolenghi.utils.AppErrorHandler
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
@@ -56,10 +58,28 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
 
     @Composable
     override fun EditorUI(state: ImageState, onStateChange: (ImageState) -> Unit) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
-            uri?.let { onStateChange(state.copy(imageUri = it.toString())) }
+            uri?.let { contentUri ->
+                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    AppErrorHandler.runWithGlobalLog("Failed to import image") {
+                        val inputStream = context.contentResolver.openInputStream(contentUri)
+                            ?: throw IllegalStateException("Could not open image file")
+                        
+                        val file = java.io.File(context.filesDir, "img_${UUID.randomUUID()}.png")
+                        file.outputStream().use { out -> inputStream.use { it.copyTo(out) } }
+                        val localUri = Uri.fromFile(file).toString()
+                        
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            onStateChange(state.copy(imageUri = localUri))
+                        }
+                    }
+                }
+            }
         }
 
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {

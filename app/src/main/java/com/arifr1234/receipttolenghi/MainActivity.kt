@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -80,17 +81,17 @@ class MainActivity : ComponentActivity() {
                     val selectedMode = APP_MODES.find { it.route == currentScreen }
                     
                     if (selectedMode != null) {
-                        selectedMode.content(Modifier.padding(innerPadding)) { currentScreen = AppRoute.HOME }
+                        selectedMode.content(Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) { currentScreen = AppRoute.HOME }
                     } else {
                         when (currentScreen) {
                             AppRoute.BLUETOOTH -> BluetoothScreen(
-                                modifier = Modifier.padding(innerPadding),
+                                modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
                                 onNavigateBack = { currentScreen = AppRoute.HOME }
                             )
                             else -> {
                                 // Default fallback (home)
                                 HomeScreen(
-                                    modifier = Modifier.padding(innerPadding),
+                                    modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
                                     onNavigateToBluetooth = { currentScreen = AppRoute.BLUETOOTH },
                                     onNavigateToMode = { route -> currentScreen = route },
                                     modes = APP_MODES.map { it.route }

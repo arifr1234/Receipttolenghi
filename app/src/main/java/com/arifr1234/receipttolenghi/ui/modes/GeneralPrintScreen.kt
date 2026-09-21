@@ -1,6 +1,7 @@
 package com.arifr1234.receipttolenghi.ui.modes
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -23,29 +24,30 @@ fun GeneralPrintScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Workspace") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        },
-        // We explicitly use a fresh Modifier here. 
-        // MainActivity passes a modifier with .padding(SystemBars) which causes double-padding 
-        // on both the top (TopAppBar) and the bottom (keyboard/navbar).
-        modifier = Modifier.fillMaxSize()
-    ) { innerPadding ->
-        Box(
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding()
+    ) {
+        // Compact Header
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                // Only take the top padding (TopAppBar + Status Bar) from Scaffold
-                .padding(top = innerPadding.calculateTopPadding())
-                // Use safeDrawing for the bottom to handle both NavBar and Keyboard smoothly
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onNavigateBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                text = "Workspace",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+        
+        Box(
+            modifier = Modifier.weight(1f)
         ) {
             Column(
                 modifier = Modifier

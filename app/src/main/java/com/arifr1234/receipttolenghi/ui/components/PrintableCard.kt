@@ -39,32 +39,36 @@ fun <T : PrintableState> PrintableCard(
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(definition.displayName, style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            
+        Column(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp)) {
             // The dynamic UI editor for this state
             ReadOnlyBox(isReadOnly = isReadOnly) {
                 definition.EditorUI(state, onStateChange)
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             
             Row(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                IconButton(onClick = { isConfigExpanded = !isConfigExpanded }) {
+                IconButton(
+                    modifier = Modifier.size(36.dp),
+                    onClick = { isConfigExpanded = !isConfigExpanded }
+                ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Configure",
                         tint = if (isConfigExpanded) MaterialTheme.colorScheme.primary else LocalContentColor.current
                     )
                 }
-                IconButton(onClick = { /* Add to playlist action for later */ }) {
+                IconButton(
+                    modifier = Modifier.size(36.dp),
+                    onClick = { /* Add to playlist action for later */ }
+                ) {
                     Icon(Icons.Default.Add, contentDescription = "Add to playlist")
                 }
                 IconButton(
+                    modifier = Modifier.size(36.dp),
                     onClick = {
                         PrinterManager.printAsync { printer ->
                             definition.print(context, state, printer)

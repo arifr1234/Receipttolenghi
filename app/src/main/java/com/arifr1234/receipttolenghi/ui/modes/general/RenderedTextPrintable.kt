@@ -136,7 +136,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
     }
 
     override fun print(context: Context, state: RenderedTextState, printer: EscPosPrinter) {
-        if (state.text.isBlank()) return
+        if (state.text.isEmpty()) return
 
         val printerWidthPx = printer.printerWidthPx
 

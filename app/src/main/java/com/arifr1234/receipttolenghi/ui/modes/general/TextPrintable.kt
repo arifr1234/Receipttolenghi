@@ -47,10 +47,13 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         BasicTextField(
             value = state.text,
             onValueChange = { onStateChange(state.copy(text = it)) },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = LocalTextStyle.current.copy(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 120.dp),
+            textStyle = androidx.compose.ui.text.TextStyle(
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = state.align.textAlign,
+                textDirection = androidx.compose.ui.text.style.TextDirection.Content,
                 fontWeight = fontWeight,
                 textDecoration = textDecoration,
                 fontSize = state.size.fontSize,
@@ -61,7 +64,8 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
                     modifier = Modifier
                         .fillMaxWidth()
                         .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    propagateMinConstraints = true
                 ) {
                     innerTextField()
                 }

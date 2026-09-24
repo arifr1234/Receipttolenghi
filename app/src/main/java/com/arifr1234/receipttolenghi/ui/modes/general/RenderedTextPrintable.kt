@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -54,25 +54,27 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
         val fontStyle = if (state.isItalic) FontStyle.Italic else FontStyle.Normal
         val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
 
-        BasicTextField(
-            value = state.text,
-            onValueChange = { onStateChange(state.copy(text = it)) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 120.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            textStyle = androidx.compose.ui.text.TextStyle(
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = state.align.composeAlign,
-                textDirection = androidx.compose.ui.text.style.TextDirection.Content,
-                fontWeight = fontWeight,
-                fontStyle = fontStyle,
-                textDecoration = textDecoration,
-                // Map the raw pixel font size to sp for a rough preview in the UI
-                fontSize = state.fontSize.sp
-            ),
-        )
+        key(state.fontSize) {
+            BasicTextField(
+                value = state.text,
+                onValueChange = { onStateChange(state.copy(text = it)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 120.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = state.align.composeAlign,
+                    textDirection = androidx.compose.ui.text.style.TextDirection.Content,
+                    fontWeight = fontWeight,
+                    fontStyle = fontStyle,
+                    textDecoration = textDecoration,
+                    // Map the raw pixel font size to sp for a rough preview in the UI
+                    fontSize = state.fontSize.sp
+                ),
+            )
+        }
     }
 
     @Composable

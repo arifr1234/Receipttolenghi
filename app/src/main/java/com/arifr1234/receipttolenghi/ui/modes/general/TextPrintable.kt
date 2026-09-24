@@ -100,16 +100,21 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Bold")
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(checked = state.isBold, onCheckedChange = { onStateChange(state.copy(isBold = it)) })
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = state.isBold,
+                    onClick = { onStateChange(state.copy(isBold = !state.isBold)) },
+                    label = { Text("Bold") }
+                )
                 
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Text("Underline")
-                Spacer(modifier = Modifier.width(8.dp))
-                Switch(checked = state.isUnderline, onCheckedChange = { onStateChange(state.copy(isUnderline = it)) })
+                FilterChip(
+                    selected = state.isUnderline,
+                    onClick = { onStateChange(state.copy(isUnderline = !state.isUnderline)) },
+                    label = { Text("Underline") }
+                )
             }
         }
     }

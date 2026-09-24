@@ -109,28 +109,28 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Bold", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Switch(checked = state.isBold, onCheckedChange = { onStateChange(state.copy(isBold = it)) })
-                }
+                FilterChip(
+                    selected = state.isBold,
+                    onClick = { onStateChange(state.copy(isBold = !state.isBold)) },
+                    label = { Text("Bold") }
+                )
                 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Italic", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Switch(checked = state.isItalic, onCheckedChange = { onStateChange(state.copy(isItalic = it)) })
-                }
+                FilterChip(
+                    selected = state.isItalic,
+                    onClick = { onStateChange(state.copy(isItalic = !state.isItalic)) },
+                    label = { Text("Italic") }
+                )
                 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Underline", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Switch(checked = state.isUnderline, onCheckedChange = { onStateChange(state.copy(isUnderline = it)) })
-                }
+                FilterChip(
+                    selected = state.isUnderline,
+                    onClick = { onStateChange(state.copy(isUnderline = !state.isUnderline)) },
+                    label = { Text("Underline") }
+                )
             }
         }
     }

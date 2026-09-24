@@ -2,6 +2,7 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 
 enum class PrintableType(val definition: PrintableDefinition<out PrintableState>) {
     TEXT(TextPrintableDefinition),
+    RENDERED_TEXT(RenderedTextPrintableDefinition),
     IMAGE(ImagePrintableDefinition),
     SPACER(SpacerPrintableDefinition)
 }

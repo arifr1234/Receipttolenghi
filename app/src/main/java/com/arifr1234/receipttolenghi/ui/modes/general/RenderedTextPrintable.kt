@@ -13,7 +13,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.arifr1234.receipttolenghi.R
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -39,6 +44,7 @@ data class RenderedTextState(
     val isBold: Boolean = false,
     val isItalic: Boolean = false,
     val isUnderline: Boolean = false,
+    val fontName: String? = null,
     override val id: String = UUID.randomUUID().toString()
 ) : PrintableState
 
@@ -53,6 +59,26 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
         val fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal
         val fontStyle = if (state.isItalic) FontStyle.Italic else FontStyle.Normal
         val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
+
+        val provider = remember {
+            androidx.compose.ui.text.googlefonts.GoogleFont.Provider(
+                providerAuthority = "com.google.android.gms.fonts",
+                providerPackage = "com.google.android.gms",
+                certificates = R.array.com_google_android_gms_fonts_certs
+            )
+        }
+        val fontFamily = remember(state.fontName) {
+            if (state.fontName != null) {
+                androidx.compose.ui.text.font.FontFamily(
+                    androidx.compose.ui.text.googlefonts.Font(
+                        googleFont = androidx.compose.ui.text.googlefonts.GoogleFont(state.fontName),
+                        fontProvider = provider
+                    )
+                )
+            } else {
+                androidx.compose.ui.text.font.FontFamily.Default
+            }
+        }
 
         key(state.fontSize) {
             BasicTextField(
@@ -70,6 +96,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     fontWeight = fontWeight,
                     fontStyle = fontStyle,
                     textDecoration = textDecoration,
+                    fontFamily = fontFamily,
                     // Map the raw pixel font size to sp for a rough preview in the UI
                     fontSize = state.fontSize.sp
                 ),
@@ -102,11 +129,30 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+            var showFontSelector by remember { mutableStateOf(false) }
+            val fontListState = androidx.compose.foundation.lazy.rememberLazyListState()
+            
+            if (showFontSelector) {
+                FontSelectorDialog(
+                    onDismiss = { showFontSelector = false },
+                    onFontSelected = { onStateChange(state.copy(fontName = it)) },
+                    listState = fontListState
+                )
+            }
+
+            Button(
+                onClick = { showFontSelector = true },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Text(state.fontName ?: "Default Font")
+            }
+
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+
                 FilterChip(
                     selected = state.isBold,
                     onClick = { onStateChange(state.copy(isBold = !state.isBold)) },
@@ -138,11 +184,32 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
         else if (state.isBold) typefaceStyle = Typeface.BOLD
         else if (state.isItalic) typefaceStyle = Typeface.ITALIC
 
+        var baseTypeface = Typeface.DEFAULT
+        if (state.fontName != null) {
+            val request = androidx.core.provider.FontRequest(
+                "com.google.android.gms.fonts",
+                "com.google.android.gms",
+                state.fontName,
+                R.array.com_google_android_gms_fonts_certs
+            )
+            val result = androidx.core.provider.FontsContractCompat.fetchFonts(context, null, request)
+            if (result.statusCode == androidx.core.provider.FontsContractCompat.FontFamilyResult.STATUS_OK) {
+                val fonts = result.fonts
+                if (fonts.isNotEmpty()) {
+                    baseTypeface = androidx.core.provider.FontsContractCompat.buildTypeface(context, null, fonts) ?: Typeface.DEFAULT
+                }
+            } else {
+                com.arifr1234.receipttolenghi.utils.AppErrorHandler.handleError(
+                    IllegalStateException("Failed to fetch font '${state.fontName}' for printing. Status code: ${result.statusCode}")
+                )
+            }
+        }
+
         val textPaint = TextPaint().apply {
             isAntiAlias = false
             color = Color.BLACK
             textSize = state.fontSize
-            typeface = Typeface.create(Typeface.DEFAULT, typefaceStyle)
+            typeface = Typeface.create(baseTypeface, typefaceStyle)
             isUnderlineText = state.isUnderline
         }
 

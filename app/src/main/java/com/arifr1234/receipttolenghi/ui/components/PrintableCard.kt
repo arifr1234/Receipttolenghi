@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
@@ -37,7 +38,12 @@ fun <T : PrintableState> PrintableCard(
     Card(
         modifier = modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)) {
+        val scrollState = androidx.compose.foundation.rememberScrollState()
+        Column(
+            modifier = Modifier
+                .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
+                .let { if (!isReadOnly) it.verticalScroll(scrollState) else it }
+        ) {
             // The dynamic UI editor for this state
             ReadOnlyBox(isReadOnly = isReadOnly) {
                 definition.EditorUI(state, onStateChange)

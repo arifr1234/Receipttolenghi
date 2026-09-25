@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object GoogleFontsRepository {
-    private const val API_URL = "https://www.googleapis.com/webfonts/v1/webfonts?key=${BuildConfig.GOOGLE_FONTS_API_KEY}&capability=FAMILY_TAGS"
+    private const val API_URL = "https://www.googleapis.com/webfonts/v1/webfonts?key=${BuildConfig.GOOGLE_FONTS_API_KEY}&sort=popularity&capability=FAMILY_TAGS"
 
     // Cache fonts in memory once loaded
     private var cachedFonts: List<GoogleFontFamily>? = null

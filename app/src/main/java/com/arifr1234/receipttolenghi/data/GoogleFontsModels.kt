@@ -15,5 +15,10 @@ data class GoogleFontFamily(
     val category: String,
     val kind: String,
     val menu: String,
-    val tags: List<String>? = null
+    val tags: List<FontTag>? = null
+)
+
+data class FontTag(
+    val name: String,
+    val weight: Double? = null
 )

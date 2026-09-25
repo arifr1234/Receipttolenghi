@@ -6,6 +6,9 @@ import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,16 +22,20 @@ import com.arifr1234.receipttolenghi.R
 import com.arifr1234.receipttolenghi.data.GoogleFontFamily
 import com.arifr1234.receipttolenghi.data.GoogleFontsRepository
 import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun FontSelectorDialog(
     onDismiss: () -> Unit,
     onFontSelected: (String) -> Unit,
-    listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {}
 ) {
     var fonts by remember { mutableStateOf<List<GoogleFontFamily>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
 
     val provider = remember {
         GoogleFont.Provider(
@@ -53,23 +60,50 @@ fun FontSelectorDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.9f)
                 .padding(horizontal = 16.dp)
         ) {
             Text(
                 text = "Select Font",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 16.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { 
+                    onSearchQueryChange(it)
+                    coroutineScope.launch { listState.scrollToItem(0) }
+                },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                placeholder = { Text("Search fonts...") },
+                singleLine = true,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { 
+                            onSearchQueryChange("")
+                            coroutineScope.launch { listState.scrollToItem(0) }
+                        }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                }
             )
 
             if (isLoading) {
-                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else if (fonts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Text("Failed to load fonts (offline).")
                 }
             } else {
+                val filteredFonts = remember(fonts, searchQuery) {
+                    if (searchQuery.isBlank()) fonts else fonts.filter { it.family.contains(searchQuery, ignoreCase = true) }
+                }
+
                 // High friction fling behavior
                 val highFrictionFling = remember {
                     object : FlingBehavior {
@@ -84,10 +118,10 @@ fun FontSelectorDialog(
 
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     flingBehavior = highFrictionFling
                 ) {
-                    items(fonts, key = { it.family }) { font ->
+                    items(filteredFonts, key = { it.family }) { font ->
                         val fontFamily = remember(font.family) {
                             FontFamily(
                                 Font(googleFont = GoogleFont(font.family), fontProvider = provider)

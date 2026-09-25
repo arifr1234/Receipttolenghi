@@ -131,17 +131,24 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
             Spacer(modifier = Modifier.height(8.dp))
             var showFontSelector by remember { mutableStateOf(false) }
             val fontListState = androidx.compose.foundation.lazy.rememberLazyListState()
+            var fontSearchQuery by remember { mutableStateOf("") }
             
             if (showFontSelector) {
                 FontSelectorDialog(
                     onDismiss = { showFontSelector = false },
                     onFontSelected = { onStateChange(state.copy(fontName = it)) },
-                    listState = fontListState
+                    listState = fontListState,
+                    searchQuery = fontSearchQuery,
+                    onSearchQueryChange = { fontSearchQuery = it }
                 )
             }
 
+            val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
             Button(
-                onClick = { showFontSelector = true },
+                onClick = { 
+                    focusManager.clearFocus()
+                    showFontSelector = true 
+                },
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             ) {
                 Text(state.fontName ?: "Default Font")

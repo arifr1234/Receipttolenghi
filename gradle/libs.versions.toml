@@ -11,9 +11,11 @@ activityCompose = "1.13.0"
 kotlin = "2.4.10"
 coil = "2.7.0"
 composeBom = "2026.06.01"
+uiTextGoogleFonts = "1.12.1"
 
 [libraries]
 androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+androidx-compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 escpos-thermalprinter-android = { module = "com.github.DantSu:ESCPOS-ThermalPrinter-Android", version.ref = "escposThermalprinterAndroid" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }

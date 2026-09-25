@@ -52,10 +52,11 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
 
     Column(modifier = modifier) {
         // Text Tabs
-        PrimaryTabRow(
+        PrimaryScrollableTabRow(
             selectedTabIndex = pagerState.currentPage,
             modifier = Modifier.fillMaxWidth(),
             containerColor = Color.Transparent,
+            edgePadding = 8.dp,
             divider = {}
         ) {
             types.forEachIndexed { index, type ->

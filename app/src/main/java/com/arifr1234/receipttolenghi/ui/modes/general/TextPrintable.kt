@@ -6,6 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.text.font.FontWeight
 import android.content.Context
 import androidx.compose.foundation.text.BasicTextField
@@ -44,25 +47,48 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
         val fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal
         val textDecoration = if (state.isUnderline) TextDecoration.Underline else TextDecoration.None
 
-        key(state.size) {
-            BasicTextField(
-                value = state.text,
-                onValueChange = { onStateChange(state.copy(text = it)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 120.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                textStyle = androidx.compose.ui.text.TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = state.align.textAlign,
-                    textDirection = androidx.compose.ui.text.style.TextDirection.Content,
-                    fontWeight = fontWeight,
-                    textDecoration = textDecoration,
-                    fontSize = state.size.fontSize,
-                    textGeometricTransform = state.size.transform
-                ),
-            )
+        Column {
+            key(state.size) {
+                BasicTextField(
+                    value = state.text,
+                    onValueChange = { onStateChange(state.copy(text = it)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 120.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = state.align.textAlign,
+                        textDirection = androidx.compose.ui.text.style.TextDirection.Content,
+                        fontWeight = fontWeight,
+                        textDecoration = textDecoration,
+                        fontSize = state.size.fontSize,
+                        textGeometricTransform = state.size.transform
+                    ),
+                )
+            }
+            
+            val hasUnsupportedChars = state.text.any { it.code > 127 }
+            if (hasUnsupportedChars) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Special characters may not print correctly. Use 'Rendered Text' instead.",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
     }
 

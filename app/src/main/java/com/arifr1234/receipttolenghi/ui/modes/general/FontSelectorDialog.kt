@@ -4,8 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -23,9 +24,9 @@ import com.arifr1234.receipttolenghi.R
 import com.arifr1234.receipttolenghi.data.GoogleFontFamily
 import com.arifr1234.receipttolenghi.data.GoogleFontsRepository
 import com.arifr1234.receipttolenghi.utils.AppErrorHandler
-import kotlinx.coroutines.launch
+import androidx.compose.foundation.ExperimentalFoundationApi
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun FontSelectorDialog(
     onDismiss: () -> Unit,
@@ -94,25 +95,12 @@ fun FontSelectorDialog(
                 }
             )
 
-            LazyRow(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(subsets) { subset ->
-                    FilterChip(
-                        selected = subset in selectedSubsets,
-                        onClick = {
-                            val newSelected = if (subset in selectedSubsets) {
-                                selectedSubsets - subset
-                            } else {
-                                selectedSubsets + subset
-                            }
-                            onSelectedSubsetsChange(newSelected)
-                        },
-                        label = { Text(subset) }
-                    )
-                }
-            }
+            SubsetSelector(
+                subsets = subsets,
+                selectedSubsets = selectedSubsets,
+                onSelectedSubsetsChange = onSelectedSubsetsChange,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
@@ -177,6 +165,97 @@ fun FontSelectorDialog(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun SubsetSelector(
+    subsets: List<String>,
+    selectedSubsets: Set<String>,
+    onSelectedSubsetsChange: (Set<String>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // TODO: This composable is more complicated then I wished it was.
+
+    var expanded by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf("") }
+    
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            selectedSubsets.forEach { subset ->
+                InputChip(
+                    selected = true,
+                    onClick = { onSelectedSubsetsChange(selectedSubsets - subset) },
+                    label = { Text(subset) },
+                    trailingIcon = { Icon(Icons.Default.Clear, contentDescription = "Remove", modifier = Modifier.size(16.dp)) },
+                    modifier = Modifier.align(Alignment.CenterVertically)
+                )
+            }
+            
+            androidx.compose.foundation.text.BasicTextField(
+                value = searchText,
+                onValueChange = { 
+                    searchText = it
+                    expanded = true 
+                },
+                modifier = Modifier
+                    .widthIn(min = 120.dp)
+                    .align(Alignment.CenterVertically),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                singleLine = true,
+                decorationBox = { innerTextField ->
+                    Box(
+                        contentAlignment = Alignment.CenterStart,
+                        modifier = Modifier.defaultMinSize(minHeight = 32.dp)
+                    ) {
+                        if (searchText.isEmpty()) {
+                            Text(
+                                "+ Subset filter",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+        }
+        
+        val unselected = remember(subsets, selectedSubsets) { subsets.filter { it !in selectedSubsets } }
+        val filteredDropdown = remember(unselected, searchText) {
+            if (searchText.isBlank()) unselected else unselected.filter { it.contains(searchText, ignoreCase = true) }
+        }
+        
+        if (filteredDropdown.isNotEmpty() && expanded) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                filteredDropdown.forEach { subset ->
+                    DropdownMenuItem(
+                        text = { Text(subset) },
+                        onClick = {
+                            onSelectedSubsetsChange(selectedSubsets + subset)
+                            searchText = ""
+                            expanded = false
+                        }
+                    )
                 }
             }
         }

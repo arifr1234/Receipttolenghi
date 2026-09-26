@@ -125,4 +125,8 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
     override fun clearState(state: TextState): TextState {
         return state.copy(text = "")
     }
+
+    override fun getClipboardText(state: TextState): String? {
+        return state.text.takeIf { it.isNotBlank() }
+    }
 }

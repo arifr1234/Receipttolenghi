@@ -8,16 +8,22 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.ClipEntry
+import android.content.ClipData
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableDefinition
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
@@ -39,6 +45,8 @@ fun <T : PrintableState> PrintableCard(
         modifier = modifier.fillMaxWidth()
     ) {
         val scrollState = androidx.compose.foundation.rememberScrollState()
+        val clipboard = LocalClipboard.current
+        val coroutineScope = rememberCoroutineScope()
         Column(
             modifier = Modifier
                 .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
@@ -55,6 +63,21 @@ fun <T : PrintableState> PrintableCard(
                 horizontalArrangement = Arrangement.End,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val clipboardText = definition.getClipboardText(state)
+                if (clipboardText != null) {
+                    IconButton(
+                        modifier = Modifier.size(36.dp),
+                        onClick = {
+                            coroutineScope.launch {
+                                clipboard.setClipEntry(ClipEntry(
+                                    ClipData.newPlainText("text", clipboardText)
+                                ))
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
+                    }
+                }
                 IconButton(
                     modifier = Modifier.size(36.dp),
                     onClick = { isConfigExpanded = !isConfigExpanded }

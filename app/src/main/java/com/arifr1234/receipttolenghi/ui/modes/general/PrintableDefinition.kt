@@ -26,5 +26,7 @@ interface PrintableDefinition<T : PrintableState> {
 
     fun print(context: Context, state: T, printer: EscPosPrinter)
     
+    fun getClipboardText(state: T): String? = null
+    
     fun clearState(state: T): T = state
 }

@@ -244,4 +244,8 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
     override fun clearState(state: RenderedTextState): RenderedTextState {
         return state.copy(text = "")
     }
+
+    override fun getClipboardText(state: RenderedTextState): String? {
+        return state.text.takeIf { it.isNotBlank() }
+    }
 }

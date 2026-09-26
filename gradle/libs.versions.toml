@@ -15,6 +15,7 @@ uiTextGoogleFonts = "1.12.1"
 
 [libraries]
 androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 escpos-thermalprinter-android = { module = "com.github.DantSu:ESCPOS-ThermalPrinter-Android", version.ref = "escposThermalprinterAndroid" }

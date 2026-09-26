@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -31,9 +32,12 @@ fun FontSelectorDialog(
     onFontSelected: (String) -> Unit,
     listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     searchQuery: String = "",
-    onSearchQueryChange: (String) -> Unit = {}
+    onSearchQueryChange: (String) -> Unit = {},
+    selectedSubsets: Set<String> = emptySet(),
+    onSelectedSubsetsChange: (Set<String>) -> Unit = {}
 ) {
     var fonts by remember { mutableStateOf<List<GoogleFontFamily>>(emptyList()) }
+    var subsets by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -48,6 +52,7 @@ fun FontSelectorDialog(
     LaunchedEffect(Unit) {
         AppErrorHandler.runWithGlobalLog {
             fonts = GoogleFontsRepository.getFonts()
+            subsets = GoogleFontsRepository.getSubsetsSortedByPopularity()
             isLoading = false
         }
     }
@@ -73,9 +78,8 @@ fun FontSelectorDialog(
                 value = searchQuery,
                 onValueChange = { 
                     onSearchQueryChange(it)
-                    coroutineScope.launch { listState.scrollToItem(0) }
                 },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 placeholder = { Text("Search fonts...") },
                 singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
@@ -83,13 +87,32 @@ fun FontSelectorDialog(
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { 
                             onSearchQueryChange("")
-                            coroutineScope.launch { listState.scrollToItem(0) }
                         }) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear")
                         }
                     }
                 }
             )
+
+            LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(subsets) { subset ->
+                    FilterChip(
+                        selected = subset in selectedSubsets,
+                        onClick = {
+                            val newSelected = if (subset in selectedSubsets) {
+                                selectedSubsets - subset
+                            } else {
+                                selectedSubsets + subset
+                            }
+                            onSelectedSubsetsChange(newSelected)
+                        },
+                        label = { Text(subset) }
+                    )
+                }
+            }
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
@@ -100,8 +123,15 @@ fun FontSelectorDialog(
                     Text("Failed to load fonts (offline).")
                 }
             } else {
-                val filteredFonts = remember(fonts, searchQuery) {
-                    if (searchQuery.isBlank()) fonts else fonts.filter { it.family.contains(searchQuery, ignoreCase = true) }
+                val filteredFonts = remember(fonts, searchQuery, selectedSubsets) {
+                    fonts.filter { font -> 
+                        (searchQuery.isBlank() || font.family.contains(searchQuery, ignoreCase = true)) &&
+                        selectedSubsets.all { it in font.subsets }
+                    }
+                }
+
+                LaunchedEffect(searchQuery, selectedSubsets) {
+                    listState.scrollToItem(0)
                 }
 
                 // High friction fling behavior

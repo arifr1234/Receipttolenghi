@@ -39,4 +39,15 @@ object GoogleFontsRepository {
             throw Exception("Failed to fetch fonts: ${connection.responseCode} ${connection.responseMessage}")
         }
     }
+
+    suspend fun getSubsetsSortedByPopularity(): List<String> = withContext(Dispatchers.Default) {
+        val fonts = getFonts()
+        val counts = mutableMapOf<String, Int>()
+        for (font in fonts) {
+            for (subset in font.subsets) {
+                counts[subset] = (counts[subset] ?: 0) + 1
+            }
+        }
+        return@withContext counts.entries.sortedByDescending { it.value }.map { it.key }
+    }
 }

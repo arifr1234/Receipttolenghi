@@ -50,4 +50,21 @@ object GoogleFontsRepository {
         }
         return@withContext counts.entries.sortedByDescending { it.value }.map { it.key }
     }
+    suspend fun getTagsByCategory(): Map<String, List<String>> = withContext(Dispatchers.Default) {
+        val fonts = getFonts()
+        val interestingCategories = listOf("Expressive", "Sans", "Script", "Serif", "Theme")
+        val categoryToTags = mutableMapOf<String, MutableSet<String>>()
+        
+        interestingCategories.forEach { categoryToTags[it] = mutableSetOf() }
+
+        for (font in fonts) {
+            font.significantTags.forEach { (category, tags) ->
+                if (category in interestingCategories) {
+                    categoryToTags[category]?.addAll(tags)
+                }
+            }
+        }
+        
+        return@withContext categoryToTags.mapValues { it.value.sorted() }
+    }
 }

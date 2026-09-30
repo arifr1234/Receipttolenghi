@@ -4,6 +4,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,10 +39,13 @@ fun FontSelectorDialog(
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
     selectedSubsets: Set<String> = emptySet(),
-    onSelectedSubsetsChange: (Set<String>) -> Unit = {}
+    onSelectedSubsetsChange: (Set<String>) -> Unit = {},
+    selectedTags: Map<String, String> = emptyMap(),
+    onSelectedTagsChange: (Map<String, String>) -> Unit = {}
 ) {
     var fonts by remember { mutableStateOf<List<GoogleFontFamily>>(emptyList()) }
     var subsets by remember { mutableStateOf<List<String>>(emptyList()) }
+    var tagsByCategory by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var isLoading by remember { mutableStateOf(true) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -54,6 +61,7 @@ fun FontSelectorDialog(
         AppErrorHandler.runWithGlobalLog {
             fonts = GoogleFontsRepository.getFonts()
             subsets = GoogleFontsRepository.getSubsetsSortedByPopularity()
+            tagsByCategory = GoogleFontsRepository.getTagsByCategory()
             isLoading = false
         }
     }
@@ -66,7 +74,7 @@ fun FontSelectorDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f)
+                .fillMaxHeight(1f)
                 .padding(horizontal = 16.dp)
         ) {
             Text(
@@ -102,6 +110,35 @@ fun FontSelectorDialog(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
 
+            tagsByCategory.forEach { (category, tags) ->
+                if (tags.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(category, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(end = 4.dp))
+                        tags.forEach { tag ->
+                            FilterChip(
+                                selected = selectedTags[category] == tag,
+                                onClick = { 
+                                    if (selectedTags[category] == tag) {
+                                        onSelectedTagsChange(selectedTags - category)
+                                    } else {
+                                        onSelectedTagsChange(selectedTags + (category to tag))
+                                    }
+                                },
+                                label = { Text(tag) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -111,14 +148,21 @@ fun FontSelectorDialog(
                     Text("Failed to load fonts (offline).")
                 }
             } else {
-                val filteredFonts = remember(fonts, searchQuery, selectedSubsets) {
+                val filteredFonts = remember(fonts, searchQuery, selectedSubsets, selectedTags) {
                     fonts.filter { font -> 
-                        (searchQuery.isBlank() || font.family.contains(searchQuery, ignoreCase = true)) &&
-                        selectedSubsets.all { it in font.subsets }
+                        val matchesSearch = searchQuery.isBlank() || font.family.contains(searchQuery, ignoreCase = true)
+                        val matchesSubsets = selectedSubsets.all { it in font.subsets }
+                        
+                        // Check if the font has all the selected tags
+                        val matchesTags = selectedTags.all { (category, tag) ->
+                            font.significantTags[category]?.contains(tag) == true
+                        }
+                        
+                        matchesSearch && matchesSubsets && matchesTags
                     }
                 }
 
-                LaunchedEffect(searchQuery, selectedSubsets) {
+                LaunchedEffect(searchQuery, selectedSubsets, selectedTags) {
                     listState.scrollToItem(0)
                 }
 
@@ -133,10 +177,26 @@ fun FontSelectorDialog(
                         }
                     }
                 }
+                
+                val nestedScrollConnection = remember {
+                    object : NestedScrollConnection {
+                        override fun onPostScroll(
+                            consumed: Offset,
+                            available: Offset,
+                            source: NestedScrollSource
+                        ): Offset {
+                            // Consume the remaining scroll so the bottom sheet doesn't dismiss
+                            return available
+                        }
+                    }
+                }
 
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .nestedScroll(nestedScrollConnection),
                     flingBehavior = highFrictionFling
                 ) {
                     items(filteredFonts, key = { it.family }) { font ->
@@ -153,7 +213,7 @@ fun FontSelectorDialog(
                                     onFontSelected(font.family)
                                     onDismiss()
                                 }
-                                .padding(vertical = 12.dp),
+                                .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(

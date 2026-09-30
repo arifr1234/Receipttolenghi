@@ -133,6 +133,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
             val fontListState = androidx.compose.foundation.lazy.rememberLazyListState()
             var fontSearchQuery by remember { mutableStateOf("") }
             var fontSelectedSubsets by remember { mutableStateOf(emptySet<String>()) }
+            var fontSelectedTags by remember { mutableStateOf(emptyMap<String, String>()) }
             
             if (showFontSelector) {
                 FontSelectorDialog(
@@ -142,7 +143,9 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     searchQuery = fontSearchQuery,
                     onSearchQueryChange = { fontSearchQuery = it },
                     selectedSubsets = fontSelectedSubsets,
-                    onSelectedSubsetsChange = { fontSelectedSubsets = it }
+                    onSelectedSubsetsChange = { fontSelectedSubsets = it },
+                    selectedTags = fontSelectedTags,
+                    onSelectedTagsChange = { fontSelectedTags = it }
                 )
             }
 

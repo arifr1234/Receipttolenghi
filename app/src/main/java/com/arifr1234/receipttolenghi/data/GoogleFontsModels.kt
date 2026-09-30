@@ -16,7 +16,21 @@ data class GoogleFontFamily(
     val kind: String,
     val menu: String,
     val tags: List<FontTag>? = null
-)
+) {
+    val significantTags: Map<String, List<String>>
+        get() {
+            val result = mutableMapOf<String, MutableList<String>>()
+            tags?.filter { (it.weight ?: 0.0) >= 50.0 }?.forEach { tag ->
+                val parts = tag.name.split("/")
+                if (parts.size >= 3) {
+                    val category = parts[1]
+                    val tagName = parts[2]
+                    result.getOrPut(category) { mutableListOf() }.add(tagName)
+                }
+            }
+            return result
+        }
+}
 
 data class FontTag(
     val name: String,

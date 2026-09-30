@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.arifr1234.receipttolenghi.R
 import com.arifr1234.receipttolenghi.data.GoogleFontFamily
 import com.arifr1234.receipttolenghi.data.GoogleFontsRepository
-import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 import androidx.compose.foundation.ExperimentalFoundationApi
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -58,7 +58,7 @@ fun FontSelectorDialog(
     }
 
     LaunchedEffect(Unit) {
-        AppErrorHandler.runWithGlobalLog {
+        AppNotifier.runWithGlobalLog {
             fonts = GoogleFontsRepository.getFonts()
             subsets = GoogleFontsRepository.getSubsetsSortedByPopularity()
             tagsByCategory = GoogleFontsRepository.getTagsByCategory()

@@ -21,7 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.arifr1234.receipttolenghi.printer.PrinterManager
-import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 import kotlinx.coroutines.launch
 
 @Composable
@@ -49,7 +49,7 @@ fun BluetoothScreen(
                 isConnecting = false
             }
         } else {
-            AppErrorHandler.handleError(SecurityException("Permissions not granted."))
+            AppNotifier.handleError(SecurityException("Permissions not granted."))
         }
     }
 

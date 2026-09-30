@@ -212,7 +212,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     baseTypeface = androidx.core.provider.FontsContractCompat.buildTypeface(context, null, fonts) ?: Typeface.DEFAULT
                 }
             } else {
-                com.arifr1234.receipttolenghi.utils.AppErrorHandler.handleError(
+                com.arifr1234.receipttolenghi.utils.AppNotifier.handleError(
                     IllegalStateException("Failed to fetch font '${state.fontName}' for printing. Status code: ${result.statusCode}")
                 )
             }

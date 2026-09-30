@@ -27,7 +27,7 @@ import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import java.util.UUID
 import androidx.core.net.toUri
 import androidx.core.graphics.scale
-import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
@@ -66,7 +66,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         ) { uri: Uri? ->
             uri?.let { contentUri ->
                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    AppErrorHandler.runWithGlobalLog("Failed to import image") {
+                    AppNotifier.runWithGlobalLog("Failed to import image") {
                         val inputStream = context.contentResolver.openInputStream(contentUri)
                             ?: throw IllegalStateException("Could not open image file")
                         

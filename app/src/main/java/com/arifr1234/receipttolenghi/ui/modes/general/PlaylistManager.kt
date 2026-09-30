@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 
 private data class HistoryItem(
     val id: String = UUID.randomUUID().toString(),
@@ -49,8 +49,8 @@ object PlaylistManager {
                 val state = gson.fromJson(raw.stateJson, raw.type.definition.stateClass.java)
                 ParsedHistoryItem(raw.id, state)
             }.onFailure {
-                // We use AppErrorHandler directly just to log to the system/snackbar without crashing the whole map
-                AppErrorHandler.handleError(it, "Failed to parse history item")
+                // We use AppNotifier directly just to log to the system/snackbar without crashing the whole map
+                AppNotifier.handleError(it, "Failed to parse history item")
             }.getOrNull()
         }
     }

@@ -25,7 +25,7 @@ import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.theme.ReceipttolenghiTheme
-import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 
 enum class AppRoute(val title: String) {
     HOME("Home"),
@@ -69,14 +69,25 @@ class MainActivity : ComponentActivity() {
                 val snackbarHostState = remember { SnackbarHostState() }
 
                 LaunchedEffect(Unit) {
-                    AppErrorHandler.errorMessages.collect { message ->
+                    AppNotifier.messages.collect { message ->
                         snackbarHostState.showSnackbar(message)
                     }
                 }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    snackbarHost = { SnackbarHost(hostState = snackbarHostState, modifier = Modifier.imePadding()) }
+                    snackbarHost = { 
+                        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.imePadding()) { snackbarData ->
+                            val customVisuals = snackbarData.visuals as? com.arifr1234.receipttolenghi.utils.AppMessage
+                            val isError = customVisuals?.isError == true
+                            
+                            androidx.compose.material3.Snackbar(
+                                snackbarData = snackbarData,
+                                containerColor = if (isError) androidx.compose.material3.MaterialTheme.colorScheme.errorContainer else androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = if (isError) androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer else androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        } 
+                    }
                 ) { innerPadding ->
                     val selectedMode = APP_MODES.find { it.route == currentScreen }
                     

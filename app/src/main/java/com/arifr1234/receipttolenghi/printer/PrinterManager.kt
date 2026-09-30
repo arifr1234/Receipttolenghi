@@ -1,7 +1,7 @@
 package com.arifr1234.receipttolenghi.printer
 
 import android.annotation.SuppressLint
-import com.arifr1234.receipttolenghi.utils.AppErrorHandler
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import kotlinx.coroutines.CoroutineScope
@@ -27,7 +27,7 @@ object PrinterManager {
     fun printAsync(block: (EscPosPrinter) -> Unit) {
         printScope.launch {
             runCatching {
-                AppErrorHandler.runWithGlobalLog {
+                AppNotifier.runWithGlobalLog {
                     printMutex.withLock {
                         val p = getPrinterOrThrow()
                         block(p)
@@ -44,7 +44,7 @@ object PrinterManager {
     @SuppressLint("MissingPermission")
     suspend fun connect(isMock: Boolean = false): Boolean = withContext(Dispatchers.IO) {
         runCatching {
-            AppErrorHandler.runWithGlobalLog("Error connecting to printer") {
+            AppNotifier.runWithGlobalLog("Error connecting to printer") {
                 disconnect() // Always attempt a fresh connection
                 
                 val connection = if (isMock) {
@@ -57,10 +57,10 @@ object PrinterManager {
                     // Initialize the printer globally
                     printer = EscPosPrinter(connection, 203, 48f, 32)
                     val printerType = if (isMock) "Mock Printer" else "Printer"
-                    AppErrorHandler.showMessage("Connected to $printerType!")
+                    AppNotifier.showMessage("Connected to $printerType!")
                     true
                 } else {
-                    AppErrorHandler.handleError(IllegalStateException("No paired printer found"))
+                    AppNotifier.handleError(IllegalStateException("No paired printer found"))
                     false
                 }
             }
@@ -69,7 +69,7 @@ object PrinterManager {
 
     fun disconnect() {
         runCatching {
-            AppErrorHandler.runWithGlobalLog("Error disconnecting from printer") {
+            AppNotifier.runWithGlobalLog("Error disconnecting from printer") {
                 printer?.disconnectPrinter()
             }
         }.also { printer = null }

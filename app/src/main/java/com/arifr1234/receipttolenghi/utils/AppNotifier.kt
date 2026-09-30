@@ -4,31 +4,39 @@ import android.util.Log
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import androidx.compose.material3.SnackbarVisuals
+import androidx.compose.material3.SnackbarDuration
 
-object AppErrorHandler {
-    // The "Radio Tower" for global error messages
-    private val _errorMessages = MutableSharedFlow<String>(
+data class AppMessage(
+    override val message: String,
+    val isError: Boolean = false,
+    override val actionLabel: String? = null,
+    override val withDismissAction: Boolean = false,
+    override val duration: SnackbarDuration = SnackbarDuration.Short
+) : SnackbarVisuals
+
+object AppNotifier {
+    // The "Radio Tower" for global messages
+    private val _messages = MutableSharedFlow<AppMessage>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    val errorMessages = _errorMessages.asSharedFlow()
+    val messages = _messages.asSharedFlow()
 
     /**
      * Reports an error globally, logging it and broadcasting it to the UI.
-     * Use this directly only when an exception occurs inside a CoroutineExceptionHandler 
-     * or when you need to manually report a logical error (no exception thrown).
      */
     fun handleError(e: Throwable, userMessage: String? = null) {
         val finalMessage = userMessage ?: e.message ?: "An unexpected error occurred"
         Log.e("AppError", finalMessage, e)
-        _errorMessages.tryEmit(finalMessage)
+        _messages.tryEmit(AppMessage(finalMessage, isError = true))
     }
 
     /**
      * Shows a generic global snackbar message (e.g. for success notifications).
      */
     fun showMessage(message: String) {
-        _errorMessages.tryEmit(message)
+        _messages.tryEmit(AppMessage(message, isError = false))
     }
 
     /**
@@ -40,7 +48,7 @@ object AppErrorHandler {
             return block()
         } catch (e: Exception) {
             handleError(e, userMessage)
-            throw e // Re-throw to allow Kotlin's runCatching to intercept it upstream
+            throw e
         }
     }
 }

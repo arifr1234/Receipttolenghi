@@ -1,79 +1,213 @@
 package com.arifr1234.receipttolenghi.ui.modes.general
 
-import android.content.Context
-import android.content.SharedPreferences
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
 import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
+import java.io.File
 import java.util.UUID
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
-import com.arifr1234.receipttolenghi.utils.AppNotifier
-
-private data class HistoryItem(
-    val id: String = UUID.randomUUID().toString(),
-    val type: PrintableType,
-    val stateJson: String,
-    val timestamp: Long = System.currentTimeMillis()
+data class PlaylistUserMetadata(
+    val name: String,
+    val description: String = ""
 )
 
-data class ParsedHistoryItem(
+data class PlaylistSystemMetadata(
+    val size: Int,
+    val lastModified: Long
+)
+
+data class PlaylistHeader(
     val id: String,
-    val state: PrintableState
+    val userMetadata: PlaylistUserMetadata,
+    val systemMetadata: PlaylistSystemMetadata
 )
+
+internal data class PlaylistItemRaw(val type: PrintableType, val stateJson: String)
 
 object PlaylistManager {
-    private const val PREFS_NAME = "receipttolenghi_history"
-    private const val KEY_HISTORY_LIST = "history_list"
-    
-    private var prefs: SharedPreferences? = null
-    private val gson = Gson()
-    
-    private val _history = MutableStateFlow<List<ParsedHistoryItem>>(emptyList())
-    val history: StateFlow<List<ParsedHistoryItem>> = _history.asStateFlow()
+    const val HISTORY_PLAYLIST_ID = "history"
+    internal val gson = Gson()
+    private var playlistsDir: File? = null
+    private var indexState: ObservablePersistentState<List<PlaylistHeader>>? = null
+    val playlists: StateFlow<List<PlaylistHeader>>
+        get() = indexState?.stateFlow ?: MutableStateFlow(emptyList())
 
-    fun init(context: Context) {
-        if (prefs != null) return
-        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        loadHistory()
-    }
-
-    private fun loadHistory() {
-        val json = prefs?.getString(KEY_HISTORY_LIST, null) ?: return
-        val rawItems = runCatching { 
-            gson.fromJson(json, Array<HistoryItem>::class.java).toList() 
-        }.getOrDefault(emptyList())
-
-        _history.value = rawItems.mapNotNull { raw ->
-            runCatching {
-                val state = gson.fromJson(raw.stateJson, raw.type.definition.stateClass.java)
-                ParsedHistoryItem(raw.id, state)
-            }.onFailure {
-                // We use AppNotifier directly just to log to the system/snackbar without crashing the whole map
-                AppNotifier.handleError(it, "Failed to parse history item")
-            }.getOrNull()
+    fun init(playlistsDir: File) {
+        if (indexState != null) return
+        this.playlistsDir = playlistsDir.apply { mkdirs() }
+        
+        indexState = ObservablePersistentState(
+            JsonListDiskState(File(playlistsDir, "index.json"), PlaylistHeader::class.java),
+            0.milliseconds
+        ).apply { open() }
+        
+        // Ensure history playlist exists
+        if (indexState!!.get().none { it.id == HISTORY_PLAYLIST_ID }) {
+            createPlaylistInternal(
+                id = HISTORY_PLAYLIST_ID,
+                userMetadata = PlaylistUserMetadata("History", "Automatically saved printed items")
+            )
         }
     }
 
-    private fun saveHistory(items: List<ParsedHistoryItem>) {
-        _history.value = items
-        val rawItems = items.map { 
-            HistoryItem(it.id, PrintableRegistry.getTypeFor(it.state), gson.toJson(it.state)) 
-        }
-        prefs?.edit()?.putString(KEY_HISTORY_LIST, gson.toJson(rawItems))?.apply()
+    fun getPlaylistHeader(id: String): PlaylistHeader {
+        return indexState?.get()?.find { it.id == id } 
+            ?: throw IllegalArgumentException("Playlist with id $id not found in index")
     }
 
-    fun addStateToHistory(state: PrintableState) {
-        val newItem = ParsedHistoryItem(
-            id = UUID.randomUUID().toString(),
-            state = state
+    fun updateUserMetadata(id: String, metadata: PlaylistUserMetadata) {
+        val header = getPlaylistHeader(id)
+        val updatedHeader = header.copy(userMetadata = metadata)
+        indexState?.set { list -> list.map { if (it.id == id) updatedHeader else it } }
+    }
+
+    private fun createPlaylistInternal(id: String, userMetadata: PlaylistUserMetadata) {
+        val header = PlaylistHeader(
+            id = id,
+            userMetadata = userMetadata,
+            systemMetadata = PlaylistSystemMetadata(0, System.currentTimeMillis())
         )
-        // Add to top of list
-        val updatedList = listOf(newItem) + _history.value
-        saveHistory(updatedList)
+        indexState?.set { listOf(header) + it }
+        DiskPlaylist(id).set(emptyList())
+    }
+
+    fun createPlaylist(userMetadata: PlaylistUserMetadata): String {
+        val id = UUID.randomUUID().toString()
+        createPlaylistInternal(id, userMetadata)
+        return id
+    }
+
+    fun deletePlaylist(id: String) {
+        if (id == HISTORY_PLAYLIST_ID) throw IllegalArgumentException("Cannot delete the history playlist")
+        indexState?.set { list -> list.filter { it.id != id } }
+        getPlaylistFile(id).delete()
+    }
+
+    private fun getPlaylistFile(id: String): File {
+        return File(playlistsDir, "$id.json")
+    }
+
+    class DiskPlaylist(private val id: String) : IPersistentState<List<PrintableState>> {
+        private val rawState = JsonListDiskState(getPlaylistFile(id), PlaylistItemRaw::class.java)
+
+        override fun get(): List<PrintableState> {
+            return rawState.get().map { raw ->
+                gson.fromJson(raw.stateJson, raw.type.definition.stateClass.java)
+            }
+        }
+        
+        override fun set(value: List<PrintableState>) {
+            // Auto-update system metadata
+            val currentHeader = getPlaylistHeader(id)
+            val updatedSystemMetadata = PlaylistSystemMetadata(
+                size = value.size,
+                lastModified = System.currentTimeMillis()
+            )
+            val updatedHeader = currentHeader.copy(systemMetadata = updatedSystemMetadata)
+            indexState?.set { list -> list.map { if (it.id == id) updatedHeader else it } }
+            
+            // Serialize and save to disk
+            val rawItems = value.map { state ->
+                PlaylistItemRaw(
+                    type = PrintableRegistry.getTypeFor(state),
+                    stateJson = gson.toJson(state)
+                )
+            }
+            rawState.set(rawItems)
+        }
+    }
+}
+
+interface IPersistentState<T> {
+    fun get(): T
+    fun set(value: T)
+    
+    fun set(updater: (T) -> T) {
+        set(updater(get()))
+    }
+}
+
+class JsonListDiskState<T>(
+    private val file: File,
+    elementClass: Class<T>
+) : IPersistentState<List<T>> {
+    private val gson = Gson()
+    private val listType = com.google.gson.reflect.TypeToken.getParameterized(List::class.java, elementClass).type
+    
+    override fun get(): List<T> {
+        if (!file.exists()) return emptyList()
+        return gson.fromJson(file.readText(), listType) ?: emptyList()
     }
     
-    fun clearHistory() {
-        saveHistory(emptyList())
+    override fun set(value: List<T>) {
+        file.writeText(gson.toJson(value))
     }
+}
+
+class ObservablePersistentState<T>(
+    private val disk: IPersistentState<T>,
+    private val debounceDuration: Duration = 500.milliseconds
+) : IPersistentState<T> {
+    
+    private val scope = CoroutineScope(Dispatchers.IO)
+    private var job: Job? = null
+
+    private val _stateFlow = MutableStateFlow(disk.get())
+    val stateFlow: StateFlow<T> = _stateFlow.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    fun open() {
+        if (job != null) return
+        job = scope.launch {
+            if (debounceDuration > 0.milliseconds) {
+                _stateFlow.debounce(debounceDuration).collect { settledItems ->
+                    disk.set(settledItems)
+                }
+            } else {
+                _stateFlow.collect { items ->
+                    disk.set(items)
+                }
+            }
+        }
+    }
+
+    override fun get() = _stateFlow.value
+
+    override fun set(value: T) {
+        _stateFlow.value = value
+    }
+
+    fun close() {
+        if (job != null) {
+            job?.cancel()
+            job = null
+            // Flush any pending debounced changes to disk immediately!
+            disk.set(_stateFlow.value)
+        }
+    }
+}
+
+@Composable
+fun <T> rememberObservablePersistentState(
+    persistentState: IPersistentState<T>,
+    debounceDuration: Duration = 500.milliseconds
+): ObservablePersistentState<T> {
+    val editor = remember(persistentState) {
+        ObservablePersistentState(persistentState, debounceDuration).apply { open() }
+    }
+    DisposableEffect(editor) {
+        onDispose { editor.close() }
+    }
+    return editor
 }

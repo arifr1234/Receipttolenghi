@@ -28,7 +28,10 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PrintableCarousel(modifier: Modifier = Modifier) {
+fun PrintableCarousel(
+    modifier: Modifier = Modifier,
+    onPrintSuccess: (PrintableState) -> Unit = {}
+) {
     val types = PrintableType.entries
     val pagerState = rememberPagerState(pageCount = { types.size })
     val coroutineScope = rememberCoroutineScope()
@@ -97,9 +100,7 @@ fun PrintableCarousel(modifier: Modifier = Modifier) {
                 onStateChange = { newState ->
                     draftStates[types[page]] = newState
                 },
-                onPrintSuccess = { printedState ->
-                    PlaylistManager.addStateToHistory(printedState)
-                },
+                onPrintSuccess = onPrintSuccess,
                 definition = PrintableRegistry.getTypedDefinitionFor(types[page]),
                 clearAfterPrint = true
             )

@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.arifr1234.receipttolenghi.ui.bluetooth.BluetoothScreen
 import com.arifr1234.receipttolenghi.ui.home.HomeScreen
+import java.io.File
 import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
@@ -51,7 +52,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PlaylistManager.init(this)
+        PlaylistManager.init(File(filesDir, "playlists"))
         enableEdgeToEdge()
         setContent {
             ReceipttolenghiTheme(

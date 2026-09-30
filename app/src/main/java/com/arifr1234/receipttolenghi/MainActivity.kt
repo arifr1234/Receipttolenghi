@@ -81,12 +81,26 @@ class MainActivity : ComponentActivity() {
                             val customVisuals = snackbarData.visuals as? com.arifr1234.receipttolenghi.utils.AppMessage
                             val isError = customVisuals?.isError == true
                             
-                            androidx.compose.material3.Snackbar(
-                                snackbarData = snackbarData,
-                                containerColor = if (isError) androidx.compose.material3.MaterialTheme.colorScheme.errorContainer else androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = if (isError) androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer else androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
+                            val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState()
+
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (dismissState.currentValue != androidx.compose.material3.SwipeToDismissBoxValue.Settled) {
+                                    snackbarData.dismiss()
+                                }
+                            }
+
+                            androidx.compose.material3.SwipeToDismissBox(
+                                state = dismissState,
+                                backgroundContent = {},
+                                content = {
+                                    androidx.compose.material3.Snackbar(
+                                        snackbarData = snackbarData,
+                                        containerColor = if (isError) androidx.compose.material3.MaterialTheme.colorScheme.errorContainer else androidx.compose.material3.MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = if (isError) androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer else androidx.compose.material3.MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
                             )
-                        } 
+                        }
                     }
                 ) { innerPadding ->
                     val selectedMode = APP_MODES.find { it.route == currentScreen }

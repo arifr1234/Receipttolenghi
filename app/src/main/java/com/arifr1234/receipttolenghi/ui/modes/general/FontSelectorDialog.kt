@@ -116,7 +116,14 @@ fun FontSelectorDialog(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(category, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(end = 8.dp))
+                        val isSelected = selectedTags[category] != null
+                        Text(
+                            text = category, 
+                            style = MaterialTheme.typography.labelMedium, 
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Unspecified,
+                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else null,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
 
                         Row(
                             modifier = Modifier

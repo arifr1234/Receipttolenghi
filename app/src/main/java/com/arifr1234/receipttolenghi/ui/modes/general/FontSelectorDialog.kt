@@ -252,8 +252,7 @@ fun SubsetSelector(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -275,7 +274,8 @@ fun SubsetSelector(
                 },
                 modifier = Modifier
                     .widthIn(min = 120.dp)
-                    .align(Alignment.CenterVertically),
+                    .align(Alignment.CenterVertically)
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
@@ -286,7 +286,7 @@ fun SubsetSelector(
                     ) {
                         if (searchText.isEmpty()) {
                             Text(
-                                "+ Subset filter",
+                                "+ Language",
                                 color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.bodyMedium
                             )

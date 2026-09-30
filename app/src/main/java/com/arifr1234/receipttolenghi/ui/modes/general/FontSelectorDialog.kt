@@ -113,25 +113,31 @@ fun FontSelectorDialog(
             tagsByCategory.forEach { (category, tags) ->
                 if (tags.isNotEmpty()) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(category, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(end = 4.dp))
-                        tags.forEach { tag ->
-                            FilterChip(
-                                selected = selectedTags[category] == tag,
-                                onClick = { 
-                                    if (selectedTags[category] == tag) {
-                                        onSelectedTagsChange(selectedTags - category)
-                                    } else {
-                                        onSelectedTagsChange(selectedTags + (category to tag))
-                                    }
-                                },
-                                label = { Text(tag) }
-                            )
+                        Text(category, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(end = 8.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            tags.forEach { tag ->
+                                FilterChip(
+                                    selected = selectedTags[category] == tag,
+                                    onClick = {
+                                        if (selectedTags[category] == tag) {
+                                            onSelectedTagsChange(selectedTags - category)
+                                        } else {
+                                            onSelectedTagsChange(selectedTags + (category to tag))
+                                        }
+                                    },
+                                    label = { Text(tag) }
+                                )
+                            }
                         }
                     }
                 }

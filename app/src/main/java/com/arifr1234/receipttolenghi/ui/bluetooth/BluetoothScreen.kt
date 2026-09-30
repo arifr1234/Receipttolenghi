@@ -13,10 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -24,12 +21,14 @@ import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.utils.AppNotifier
 import kotlinx.coroutines.launch
 
+import androidx.compose.runtime.collectAsState
+
 @Composable
 fun BluetoothScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isConnecting by remember { mutableStateOf(false) }
+    val isConnecting by PrinterManager.isConnecting.collectAsState()
     val coroutineScope = rememberCoroutineScope()
 
     val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -44,9 +43,7 @@ fun BluetoothScreen(
         val allGranted = grantedMap.values.all { it }
         if (allGranted) {
             coroutineScope.launch {
-                isConnecting = true
                 PrinterManager.connect()
-                isConnecting = false
             }
         } else {
             AppNotifier.handleError(SecurityException("Permissions not granted."))
@@ -77,9 +74,7 @@ fun BluetoothScreen(
         Button(
             onClick = {
                 coroutineScope.launch {
-                    isConnecting = true
                     PrinterManager.connect(isMock = true)
-                    isConnecting = false
                 }
             },
             enabled = !isConnecting,

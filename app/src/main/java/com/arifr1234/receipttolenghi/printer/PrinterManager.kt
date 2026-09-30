@@ -41,9 +41,14 @@ object PrinterManager {
         }
     }
 
+    val isConnecting = kotlinx.coroutines.flow.MutableStateFlow(false)
+
     @SuppressLint("MissingPermission")
-    suspend fun connect(isMock: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
+    suspend fun connect(isMock: Boolean = false, silent: Boolean = false): Boolean = withContext(Dispatchers.IO) {
+        if (isConnecting.value) return@withContext false
+        isConnecting.value = true
+
+        val result = runCatching {
             AppNotifier.runWithGlobalLog("Error connecting to printer") {
                 disconnect() // Always attempt a fresh connection
                 
@@ -60,11 +65,14 @@ object PrinterManager {
                     AppNotifier.showMessage("Connected to $printerType!")
                     true
                 } else {
-                    AppNotifier.handleError(IllegalStateException("No paired printer found"))
+                    if (!silent) AppNotifier.handleError(IllegalStateException("No paired printer found"))
                     false
                 }
             }
         }.getOrDefault(false)
+        
+        isConnecting.value = false
+        result
     }
 
     fun disconnect() {

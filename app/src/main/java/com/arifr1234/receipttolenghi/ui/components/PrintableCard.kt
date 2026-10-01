@@ -36,7 +36,8 @@ fun <T : PrintableState> PrintableCard(
     onPrintSuccess: (T) -> Unit = {},
     definition: PrintableDefinition<T>,
     clearAfterPrint: Boolean = false,
-    isReadOnly: Boolean = false
+    isReadOnly: Boolean = false,
+    isScrollable: Boolean = false
 ) {
     val context = LocalContext.current
     var isConfigExpanded by remember { mutableStateOf(false) }
@@ -50,7 +51,7 @@ fun <T : PrintableState> PrintableCard(
         Column(
             modifier = Modifier
                 .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
-                .let { if (!isReadOnly) it.verticalScroll(scrollState) else it }
+                .let { if (isScrollable) it.verticalScroll(scrollState) else it }
         ) {
             // The dynamic UI editor for this state
             ReadOnlyBox(isReadOnly = isReadOnly) {

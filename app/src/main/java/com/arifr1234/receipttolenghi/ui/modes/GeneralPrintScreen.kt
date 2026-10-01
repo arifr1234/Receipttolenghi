@@ -93,9 +93,7 @@ fun GeneralPrintMain(
             modifier = Modifier.weight(1f)
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
+                modifier = Modifier.fillMaxSize()
             ) {
                 val historyEditor = rememberObservablePersistentState(
                     persistentState = PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID),

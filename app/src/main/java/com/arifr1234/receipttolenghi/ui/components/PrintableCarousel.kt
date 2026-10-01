@@ -32,7 +32,7 @@ fun PrintableCarousel(
     modifier: Modifier = Modifier,
     onPrintSuccess: (PrintableState) -> Unit = {}
 ) {
-    val types = PrintableType.entries
+    val types = PrintableType.entries.filter { it != PrintableType.PLAYLIST }
     val pagerState = rememberPagerState(pageCount = { types.size })
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -97,6 +97,7 @@ fun PrintableCarousel(
             PrintableCard(
                 modifier = Modifier.fillMaxWidth(),
                 state = draftStates[types[page]] ?: return@HorizontalPager,
+                isScrollable = true,
                 onStateChange = { newState ->
                     draftStates[types[page]] = newState
                 },

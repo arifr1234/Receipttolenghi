@@ -28,10 +28,10 @@ data class PlaylistSystemMetadata(
 )
 
 data class PlaylistHeader(
-    val id: String,
+    override val id: String,
     val userMetadata: PlaylistUserMetadata,
     val systemMetadata: PlaylistSystemMetadata
-)
+) : PrintableState
 
 internal data class PlaylistItemRaw(val type: PrintableType, val stateJson: String)
 

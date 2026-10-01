@@ -4,7 +4,8 @@ enum class PrintableType(val definition: PrintableDefinition<out PrintableState>
     TEXT(TextPrintableDefinition),
     RENDERED_TEXT(RenderedTextPrintableDefinition),
     IMAGE(ImagePrintableDefinition),
-    SPACER(SpacerPrintableDefinition)
+    SPACER(SpacerPrintableDefinition),
+    PLAYLIST(PlaylistPrintableDefinition)
 }
 
 object PrintableRegistry {

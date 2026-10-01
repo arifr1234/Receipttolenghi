@@ -44,6 +44,7 @@ object AppNotifier {
      * Executes the block. If it fails, logs/broadcasts the error globally, then re-throws it.
      */
     inline fun <T> runWithGlobalLog(userMessage: String? = null, block: () -> T): T {
+        // TODO: Out error management philosophy should be that errors should not be silent. That means that either you do nothing with it, which makes the app crash and log the error, or we use runWithGlobalLog/handleError nd catch the exception. This means that if you decide to do anything with the exception, you must catch it. This is not the case currently with all the usages of this function, and we may want to make this function catch the error.
         try {
             return block()
         } catch (e: Exception) {

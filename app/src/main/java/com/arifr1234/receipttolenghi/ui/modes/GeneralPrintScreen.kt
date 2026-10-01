@@ -8,10 +8,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,10 +26,41 @@ import com.arifr1234.receipttolenghi.ui.modes.general.rememberObservablePersiste
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(ExperimentalMaterial3Api::class)
+enum class GeneralPrintPage { Main, Playlists }
+
 @Composable
 fun GeneralPrintScreen(
     onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var currentPage by remember { mutableStateOf(GeneralPrintPage.Main) }
+    
+    BackHandler(enabled = currentPage != GeneralPrintPage.Main) {
+        currentPage = GeneralPrintPage.Main
+    }
+
+    when (currentPage) {
+        GeneralPrintPage.Main -> {
+            GeneralPrintMain(
+                onNavigateBack = onNavigateBack,
+                onNavigateToPlaylists = { currentPage = GeneralPrintPage.Playlists },
+                modifier = modifier
+            )
+        }
+        GeneralPrintPage.Playlists -> {
+            PlaylistsScreen(
+                onNavigateBack = { currentPage = GeneralPrintPage.Main },
+                modifier = modifier
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GeneralPrintMain(
+    onNavigateBack: () -> Unit,
+    onNavigateToPlaylists: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -48,6 +83,10 @@ fun GeneralPrintScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(start = 8.dp)
             )
+            Spacer(modifier = Modifier.weight(1f))
+            TextButton(onClick = onNavigateToPlaylists) {
+                Text("Playlists")
+            }
         }
         
         Box(

@@ -28,12 +28,17 @@ data class PlaylistSystemMetadata(
 )
 
 data class PlaylistHeader(
-    override val id: String,
+    val id: String,
     val userMetadata: PlaylistUserMetadata,
     val systemMetadata: PlaylistSystemMetadata
 ) : PrintableState
 
-internal data class PlaylistItemRaw(val type: PrintableType, val stateJson: String)
+data class PlaylistItem(
+    val id: String = UUID.randomUUID().toString(),
+    val state: PrintableState
+)
+
+internal data class PlaylistItemRaw(val id: String, val type: PrintableType, val stateJson: String)
 
 object PlaylistManager {
     const val HISTORY_PLAYLIST_ID = "history"
@@ -98,16 +103,24 @@ object PlaylistManager {
         return File(playlistsDir, "$id.json")
     }
 
-    class DiskPlaylist(private val id: String) : IPersistentState<List<PrintableState>> {
+    fun getLastModifiedPlaylistId(): String? {
+        val available = playlists.value.filter { it.id != HISTORY_PLAYLIST_ID }
+        return available.maxByOrNull { it.systemMetadata.lastModified }?.id
+    }
+
+    class DiskPlaylist(private val id: String) : IPersistentState<List<PlaylistItem>> {
         private val rawState = JsonListDiskState(getPlaylistFile(id), PlaylistItemRaw::class.java)
 
-        override fun get(): List<PrintableState> {
+        override fun get(): List<PlaylistItem> {
             return rawState.get().map { raw ->
-                gson.fromJson(raw.stateJson, raw.type.definition.stateClass.java)
+                PlaylistItem(
+                    id = raw.id,
+                    state = gson.fromJson(raw.stateJson, raw.type.definition.stateClass.java)
+                )
             }
         }
         
-        override fun set(value: List<PrintableState>) {
+        override fun set(value: List<PlaylistItem>) {
             // Auto-update system metadata
             val currentHeader = getPlaylistHeader(id)
             val updatedSystemMetadata = PlaylistSystemMetadata(
@@ -118,10 +131,11 @@ object PlaylistManager {
             indexState?.set { list -> list.map { if (it.id == id) updatedHeader else it } }
             
             // Serialize and save to disk
-            val rawItems = value.map { state ->
+            val rawItems = value.map { item ->
                 PlaylistItemRaw(
-                    type = PrintableRegistry.getTypeFor(state),
-                    stateJson = gson.toJson(state)
+                    id = item.id,
+                    type = PrintableRegistry.getTypeFor(item.state),
+                    stateJson = gson.toJson(item.state)
                 )
             }
             rawState.set(rawItems)

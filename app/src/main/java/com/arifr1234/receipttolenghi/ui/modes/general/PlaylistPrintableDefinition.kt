@@ -77,7 +77,7 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
     override fun print(context: Context, state: PlaylistHeader, printer: EscPosPrinter) {
         val items = PlaylistManager.DiskPlaylist(state.id).get()
         items.forEach { item ->
-            PrintableRegistry.getTypedDefinitionFor(item).print(context, item, printer)
+            PrintableRegistry.getTypedDefinitionFor(item.state).print(context, item.state, printer)
         }
     }
 }

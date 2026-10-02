@@ -22,22 +22,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.ClipEntry
 import android.content.ClipData
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.arifr1234.receipttolenghi.printer.PrinterManager
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistItem
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableDefinition
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
+
+val LocalAddToPlaylist = compositionLocalOf<((PrintableState) -> Unit)?> { null }
 
 @Composable
 fun <T : PrintableState> PrintableCard(
     modifier: Modifier = Modifier,
     state: T,
     onStateChange: (T) -> Unit = {},
-    onPrintSuccess: (T) -> Unit = {},
+    onPrintSuccess: (T) -> Unit = { item ->
+        val disk = PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID)
+        disk.set(listOf(PlaylistItem(state = item)) + disk.get())
+    },
     definition: PrintableDefinition<T>,
     clearAfterPrint: Boolean = false,
     isReadOnly: Boolean = false,
-    isScrollable: Boolean = false
+    isScrollable: Boolean = false,
+    onAddToPlaylist: ((T) -> Unit)? = LocalAddToPlaylist.current as? ((T) -> Unit)
 ) {
     val context = LocalContext.current
     var isConfigExpanded by remember { mutableStateOf(false) }
@@ -89,11 +98,13 @@ fun <T : PrintableState> PrintableCard(
                         tint = if (isConfigExpanded) MaterialTheme.colorScheme.primary else LocalContentColor.current
                     )
                 }
-                IconButton(
-                    modifier = Modifier.size(36.dp),
-                    onClick = { /* Add to playlist action for later */ }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add to playlist")
+                if (onAddToPlaylist != null) {
+                    IconButton(
+                        modifier = Modifier.size(36.dp),
+                        onClick = { onAddToPlaylist(state) }
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add to playlist")
+                    }
                 }
                 IconButton(
                     modifier = Modifier.size(36.dp),

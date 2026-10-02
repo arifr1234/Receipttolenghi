@@ -104,7 +104,7 @@ fun PlaylistsScreen(
                             onStateChange = { updated ->
                                 PlaylistManager.updateUserMetadata(updated.id, updated.userMetadata)
                             },
-                            onPrintSuccess = { }
+                            onAddToPlaylist = null
                         )
                     }
                 }

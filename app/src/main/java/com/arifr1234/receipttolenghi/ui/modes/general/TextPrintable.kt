@@ -32,8 +32,7 @@ data class TextState(
     val align: PrintAlignment = PrintAlignment.LEFT,
     val size: TextSize = TextSize.NORMAL,
     val isBold: Boolean = false,
-    val isUnderline: Boolean = false,
-    override val id: String = UUID.randomUUID().toString()
+    val isUnderline: Boolean = false
 ) : PrintableState
 
 object TextPrintableDefinition : PrintableDefinition<TextState> {

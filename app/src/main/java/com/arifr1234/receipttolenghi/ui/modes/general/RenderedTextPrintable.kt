@@ -44,8 +44,7 @@ data class RenderedTextState(
     val isBold: Boolean = false,
     val isItalic: Boolean = false,
     val isUnderline: Boolean = false,
-    val fontName: String? = null,
-    override val id: String = UUID.randomUUID().toString()
+    val fontName: String? = null
 ) : PrintableState
 
 object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> {

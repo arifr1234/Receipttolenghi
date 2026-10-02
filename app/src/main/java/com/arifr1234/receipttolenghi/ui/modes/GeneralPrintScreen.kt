@@ -10,21 +10,26 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.arifr1234.receipttolenghi.ui.components.PrintableCard
 import com.arifr1234.receipttolenghi.ui.components.PrintableCarousel
+import com.arifr1234.receipttolenghi.ui.components.LocalAddToPlaylist
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistItem
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
-import com.arifr1234.receipttolenghi.ui.modes.general.rememberObservablePersistentState
+import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
-import kotlin.time.Duration.Companion.milliseconds
+import com.arifr1234.receipttolenghi.ui.modes.general.rememberObservablePersistentState
+import kotlinx.coroutines.launch
 
 enum class GeneralPrintPage { Main, Playlists }
 
@@ -39,19 +44,80 @@ fun GeneralPrintScreen(
         currentPage = GeneralPrintPage.Main
     }
 
-    when (currentPage) {
-        GeneralPrintPage.Main -> {
-            GeneralPrintMain(
-                onNavigateBack = onNavigateBack,
-                onNavigateToPlaylists = { currentPage = GeneralPrintPage.Playlists },
-                modifier = modifier
-            )
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    var changePlaylistContext by remember { mutableStateOf<Pair<PlaylistItem, String?>?>(null) }
+    
+    val handleAddToPlaylist: (PrintableState) -> Unit = { item ->
+        val playlistItem = PlaylistItem(state = item)
+        val defaultId = PlaylistManager.getLastModifiedPlaylistId()
+        if (defaultId == null) {
+            changePlaylistContext = Pair(playlistItem, null)
+        } else {
+            PlaylistManager.DiskPlaylist(defaultId).set { it + playlistItem }
+            val playlistName = PlaylistManager.getPlaylistHeader(defaultId).userMetadata.name
+            coroutineScope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                val result = snackbarHostState.showSnackbar(
+                    message = "Added to $playlistName",
+                    actionLabel = "Change",
+                    withDismissAction = true,
+                    duration = SnackbarDuration.Short
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    changePlaylistContext = Pair(playlistItem, defaultId)
+                }
+            }
         }
-        GeneralPrintPage.Playlists -> {
-            PlaylistsScreen(
-                onNavigateBack = { currentPage = GeneralPrintPage.Main },
-                modifier = modifier
-            )
+    }
+
+    if (changePlaylistContext != null) {
+        val (itemToMove, oldPlaylistId) = changePlaylistContext!!
+        ChangePlaylistBottomSheet(
+            onDismissRequest = { changePlaylistContext = null },
+            onPlaylistSelected = { playlist ->
+                // Remove from old
+                if (oldPlaylistId != null) {
+                    PlaylistManager.DiskPlaylist(oldPlaylistId).set { it.filter { i -> i.id != itemToMove.id } }
+                }
+                // Add to new
+                PlaylistManager.DiskPlaylist(playlist.id).set { it + itemToMove }
+                
+                changePlaylistContext = null
+                coroutineScope.launch {
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    snackbarHostState.showSnackbar(
+                        message = "Added to ${playlist.userMetadata.name}",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+        )
+    }
+
+    Scaffold(
+        modifier = modifier.fillMaxSize().imePadding(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
+        CompositionLocalProvider(
+            LocalAddToPlaylist provides handleAddToPlaylist
+        ) {
+            when (currentPage) {
+                GeneralPrintPage.Main -> {
+                    GeneralPrintMain(
+                        onNavigateBack = onNavigateBack,
+                        onNavigateToPlaylists = { currentPage = GeneralPrintPage.Playlists },
+                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                    )
+                }
+                GeneralPrintPage.Playlists -> {
+                    PlaylistsScreen(
+                        onNavigateBack = { currentPage = GeneralPrintPage.Main },
+                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                    )
+                }
+            }
         }
     }
 }
@@ -95,10 +161,8 @@ fun GeneralPrintMain(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                val historyEditor = rememberObservablePersistentState(
-                    persistentState = PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID),
-                    debounceDuration = 0.milliseconds
-                )
+                val historyDisk = remember { PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID) }
+                val historyEditor = rememberObservablePersistentState(historyDisk)
                 val history by historyEditor.stateFlow.collectAsState()
                 
                 val listState = rememberLazyListState()
@@ -116,15 +180,14 @@ fun GeneralPrintMain(
                     verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
                     reverseLayout = true
                 ) {
-                    items(history) { item ->
+                    items(history, key = { it.id }) { playlistItem ->
                         PrintableCard(
                             modifier = Modifier.fillMaxWidth(),
-                            state = item,
-                            definition = PrintableRegistry.getTypedDefinitionFor(item),
+                            state = playlistItem.state,
+                            definition = PrintableRegistry.getTypedDefinitionFor(playlistItem.state),
                             isReadOnly = true,
-                            onPrintSuccess = { printedState ->
-                                // TODO: Are we adding a printable state with the same ID? Why do the printable state have an ID?
-                                historyEditor.set { prev -> listOf(printedState) + prev }
+                            onPrintSuccess = { item ->
+                                historyEditor.set { listOf(PlaylistItem(state = item)) + it }
                             }
                         )
                     }
@@ -134,8 +197,8 @@ fun GeneralPrintMain(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                    onPrintSuccess = { printedState ->
-                        historyEditor.set { prev -> listOf(printedState) + prev }
+                    onPrintSuccess = { item ->
+                        historyEditor.set { listOf(PlaylistItem(state = item)) + it }
                     }
                 )
             }

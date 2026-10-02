@@ -46,8 +46,7 @@ data class ImageState(
     val imageUri: String? = null,
     val align: PrintAlignment = PrintAlignment.CENTER,
     val ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
-    val size: ImageSize = ImageSize.FULL,
-    override val id: String = UUID.randomUUID().toString()
+    val size: ImageSize = ImageSize.FULL
 ) : PrintableState
 
 object ImagePrintableDefinition : PrintableDefinition<ImageState> {

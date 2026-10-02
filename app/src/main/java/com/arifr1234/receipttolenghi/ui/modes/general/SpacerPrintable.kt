@@ -29,8 +29,7 @@ enum class SpacerStyle(val char: String?) {
 
 data class SpacerState(
     val style: SpacerStyle = SpacerStyle.DASH,
-    val lines: Int = 1,
-    override val id: String = UUID.randomUUID().toString()
+    val lines: Int = 1
 ) : PrintableState
 
 object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {

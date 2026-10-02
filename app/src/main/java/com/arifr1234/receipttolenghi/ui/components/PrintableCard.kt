@@ -24,6 +24,16 @@ import androidx.compose.ui.platform.ClipEntry
 import android.content.ClipData
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import kotlinx.coroutines.launch
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistItem
@@ -106,19 +116,34 @@ fun <T : PrintableState> PrintableCard(
                         Icon(Icons.Default.Add, contentDescription = "Add to playlist")
                     }
                 }
-                IconButton(
-                    modifier = Modifier.size(36.dp),
-                    onClick = {
-                        PrinterManager.printAsync { printer ->
-                            definition.print(context, state, printer)
-                            onPrintSuccess(state)
-                            if (clearAfterPrint) {
-                                onStateChange(definition.clearState(state))
+                var isPrinting by remember { mutableStateOf(false) }
+                
+                Box(contentAlignment = Alignment.Center) {
+                    IconButton(
+                        modifier = Modifier.size(36.dp),
+                        onClick = {
+                            PrinterManager.printAsync { printer ->
+                                isPrinting = true
+                                try {
+                                    definition.print(context, state, printer)
+                                    onPrintSuccess(state)
+                                    if (clearAfterPrint) {
+                                        onStateChange(definition.clearState(state))
+                                    }
+                                } finally {
+                                    isPrinting = false
+                                }
                             }
                         }
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Print")
                     }
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Print")
+                    
+                    if (isPrinting) {
+                        GlowingDot(
+                            modifier = Modifier.align(Alignment.TopEnd)
+                        )
+                    }
                 }
             }
             

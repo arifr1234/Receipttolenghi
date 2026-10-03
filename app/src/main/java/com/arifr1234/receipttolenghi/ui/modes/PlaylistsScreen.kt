@@ -73,7 +73,7 @@ fun PlaylistsScreen(
     ) { innerPadding ->
         val playlistsRaw by PlaylistManager.playlists.collectAsState()
         val playlists = playlistsRaw.filter { it.id != PlaylistManager.HISTORY_PLAYLIST_ID }
-        val items = remember(playlists) { playlists.map { PlaylistItem(state = it) } }
+        val items = remember(playlists) { playlists.map { PlaylistItem(id = it.id, state = it) } }
         
         if (items.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {

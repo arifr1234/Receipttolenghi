@@ -28,14 +28,15 @@ import com.arifr1234.receipttolenghi.R
 import com.arifr1234.receipttolenghi.data.GoogleFontFamily
 import com.arifr1234.receipttolenghi.data.GoogleFontsRepository
 import com.arifr1234.receipttolenghi.utils.AppNotifier
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FontSelectorDialog(
     onDismiss: () -> Unit,
     onFontSelected: (String) -> Unit,
-    listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
+    listState: LazyListState = rememberLazyListState(),
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
     selectedSubsets: Set<String> = emptySet(),
@@ -47,7 +48,6 @@ fun FontSelectorDialog(
     var subsets by remember { mutableStateOf<List<String>>(emptyList()) }
     var tagsByCategory by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var isLoading by remember { mutableStateOf(true) }
-    val coroutineScope = rememberCoroutineScope()
 
     val provider = remember {
         GoogleFont.Provider(
@@ -175,8 +175,14 @@ fun FontSelectorDialog(
                     }
                 }
 
+
+                var isFirstLaunch by remember { mutableStateOf(true) }
                 LaunchedEffect(searchQuery, selectedSubsets, selectedTags) {
-                    listState.scrollToItem(0)
+                    if (isFirstLaunch) {
+                        isFirstLaunch = false
+                    } else {
+                        listState.scrollToItem(0)
+                    }
                 }
 
                 // High friction fling behavior
@@ -244,7 +250,7 @@ fun FontSelectorDialog(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubsetSelector(
     subsets: List<String>,

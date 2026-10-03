@@ -31,14 +31,18 @@ import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
 import com.arifr1234.receipttolenghi.ui.modes.general.rememberObservablePersistentState
 import kotlinx.coroutines.launch
 
-enum class GeneralPrintPage { Main, Playlists }
+sealed interface GeneralPrintPage {
+    data object Main : GeneralPrintPage
+    data object Playlists : GeneralPrintPage
+    data class PlaylistViewer(val id: String) : GeneralPrintPage
+}
 
 @Composable
 fun GeneralPrintScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var currentPage by remember { mutableStateOf(GeneralPrintPage.Main) }
+    var currentPage by remember { mutableStateOf<GeneralPrintPage>(GeneralPrintPage.Main) }
     
     BackHandler(enabled = currentPage != GeneralPrintPage.Main) {
         currentPage = GeneralPrintPage.Main
@@ -100,20 +104,36 @@ fun GeneralPrintScreen(
         modifier = modifier.fillMaxSize().imePadding(),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
+        val playlistNavigation = remember {
+            object : PlaylistNavigation {
+                override fun openViewer(playlistId: String) {
+                    currentPage = GeneralPrintPage.PlaylistViewer(playlistId)
+                }
+            }
+        }
+        
         CompositionLocalProvider(
-            LocalAddToPlaylist provides handleAddToPlaylist
+            LocalAddToPlaylist provides handleAddToPlaylist,
+            LocalPlaylistNavigation provides playlistNavigation
         ) {
-            when (currentPage) {
-                GeneralPrintPage.Main -> {
+            when (val page = currentPage) {
+                is GeneralPrintPage.Main -> {
                     GeneralPrintMain(
                         onNavigateBack = onNavigateBack,
                         onNavigateToPlaylists = { currentPage = GeneralPrintPage.Playlists },
                         modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
                     )
                 }
-                GeneralPrintPage.Playlists -> {
+                is GeneralPrintPage.Playlists -> {
                     PlaylistsScreen(
                         onNavigateBack = { currentPage = GeneralPrintPage.Main },
+                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                    )
+                }
+                is GeneralPrintPage.PlaylistViewer -> {
+                    PlaylistViewerScreen(
+                        playlistId = page.id,
+                        onNavigateBack = { currentPage = GeneralPrintPage.Playlists },
                         modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
                     )
                 }

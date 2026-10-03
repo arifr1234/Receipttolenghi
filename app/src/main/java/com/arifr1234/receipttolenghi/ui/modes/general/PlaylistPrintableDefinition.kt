@@ -2,6 +2,7 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 
 import android.content.Context
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -9,6 +10,9 @@ import androidx.compose.ui.unit.dp
 import com.dantsu.escposprinter.EscPosPrinter
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.Alignment
+import com.arifr1234.receipttolenghi.ui.modes.LocalPlaylistNavigation
 
 object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
     override val displayName: String = "Playlist"
@@ -24,15 +28,30 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
 
     @Composable
     override fun EditorUI(state: PlaylistHeader, onStateChange: (PlaylistHeader) -> Unit) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = state.userMetadata.name,
-                style = MaterialTheme.typography.titleMedium
-            )
-            if (state.userMetadata.description.isNotBlank()) {
+        val navigation = LocalPlaylistNavigation.current
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
                 Text(
-                    text = state.userMetadata.description,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = state.userMetadata.name,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (state.userMetadata.description.isNotBlank()) {
+                    Text(
+                        text = state.userMetadata.description,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            
+            IconButton(onClick = { navigation.openViewer(state.id) }) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Open Playlist"
                 )
             }
         }

@@ -1,9 +1,8 @@
 package com.arifr1234.receipttolenghi.utils
 
 import android.util.Log
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.SnackbarDuration
 
@@ -16,12 +15,8 @@ data class AppMessage(
 ) : SnackbarVisuals
 
 object AppNotifier {
-    // The "Radio Tower" for global messages
-    private val _messages = MutableSharedFlow<AppMessage>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val messages = _messages.asSharedFlow()
+    private val _messages = Channel<AppMessage>(Channel.BUFFERED)
+    val messages = _messages.receiveAsFlow()
 
     /**
      * Reports an error globally, logging it and broadcasting it to the UI.
@@ -29,14 +24,14 @@ object AppNotifier {
     fun handleError(e: Throwable, userMessage: String? = null) {
         val finalMessage = userMessage ?: e.message ?: "An unexpected error occurred"
         Log.e("AppError", finalMessage, e)
-        _messages.tryEmit(AppMessage(finalMessage, isError = true))
+        _messages.trySend(AppMessage(finalMessage, isError = true))
     }
 
     /**
      * Shows a generic global snackbar message (e.g. for success notifications).
      */
     fun showMessage(message: String) {
-        _messages.tryEmit(AppMessage(message, isError = false))
+        _messages.trySend(AppMessage(message, isError = false))
     }
 
     /**

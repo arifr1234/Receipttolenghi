@@ -66,6 +66,17 @@ object PlaylistManager {
         }
     }
 
+    fun writePlaylistHeader(header: PlaylistHeader) {
+        val index = indexState?.get() ?: emptyList()
+        if (index.none { it.id == header.id }) {
+            indexState?.set { it + header }
+        } else {
+            indexState?.set { list -> 
+                list.map { if (it.id == header.id) header else it } 
+            }
+        }
+    }
+
     fun getPlaylistHeader(id: String): PlaylistHeader {
         return indexState?.get()?.find { it.id == id } 
             ?: throw IllegalArgumentException("Playlist with id $id not found in index")

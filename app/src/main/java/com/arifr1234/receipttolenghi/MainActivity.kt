@@ -1,5 +1,6 @@
 package com.arifr1234.receipttolenghi
-
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -25,6 +26,7 @@ import java.io.File
 import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistShareManager
 import com.arifr1234.receipttolenghi.ui.theme.ReceipttolenghiTheme
 import com.arifr1234.receipttolenghi.utils.AppNotifier
 
@@ -50,9 +52,32 @@ class MainActivity : ComponentActivity() {
         },
     )
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: android.content.Intent) {
+        if (intent.action == android.content.Intent.ACTION_VIEW) {
+            intent.data?.let { uri ->
+                lifecycleScope.launch {
+                    try {
+                        AppNotifier.runWithGlobalLog("Failed to import playlists") {
+                            PlaylistShareManager.importPlaylists(this@MainActivity, uri)
+                            AppNotifier.showMessage("Playlists imported successfully")
+                        }
+                    } catch (e: Exception) {
+                        // Exception already logged by runWithGlobalLog, just catch to prevent crash
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         PlaylistManager.init(File(filesDir, "playlists"))
+        handleIntent(intent)
         enableEdgeToEdge()
         setContent {
             ReceipttolenghiTheme(

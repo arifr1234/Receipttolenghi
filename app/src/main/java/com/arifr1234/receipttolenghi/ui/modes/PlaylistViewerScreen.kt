@@ -1,5 +1,6 @@
 package com.arifr1234.receipttolenghi.ui.modes
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,6 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.ui.components.PrintableList
 import com.arifr1234.receipttolenghi.ui.modes.general.*
+import androidx.compose.material.icons.filled.Share
+import com.arifr1234.receipttolenghi.utils.AppNotifier
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +50,25 @@ fun PlaylistViewerScreen(
                     }
                 },
                 actions = {
+                    val coroutineScope = rememberCoroutineScope()
+                    IconButton(onClick = {
+                        coroutineScope.launch {
+                            try {
+                                val uri = PlaylistShareManager.exportPlaylist(context, playlistId)
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "*/*"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
+                            } catch (e: Exception) {
+                                AppNotifier.handleError(e, "Failed to share playlist")
+                            }
+                        }
+                    }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share")
+                    }
+                    
                     if (isPlaying) {
                         IconButton(onClick = { cancelRequested = true }) {
                             Icon(Icons.Default.Close, contentDescription = "Stop", tint = MaterialTheme.colorScheme.error)

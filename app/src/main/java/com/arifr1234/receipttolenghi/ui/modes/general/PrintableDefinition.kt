@@ -29,4 +29,6 @@ interface PrintableDefinition<T : PrintableState> {
     fun getClipboardText(state: T): String? = null
     
     fun clearState(state: T): T = state
+    
+    fun getExternalFiles(state: T): List<String> = emptyList()
 }

@@ -25,9 +25,9 @@ import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import java.util.UUID
-import androidx.core.net.toUri
 import androidx.core.graphics.scale
 import com.arifr1234.receipttolenghi.utils.AppNotifier
+import java.io.File
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
@@ -43,7 +43,7 @@ enum class DitheringAlgorithm(val label: String, val applyAlgo: (Bitmap) -> Bitm
 }
 
 data class ImageState(
-    val imageUri: String? = null,
+    val imageRelativePath: String? = null,
     val align: PrintAlignment = PrintAlignment.CENTER,
     val ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
     val size: ImageSize = ImageSize.FULL
@@ -55,6 +55,16 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
 
     override fun createDefaultState() = ImageState()
 
+    fun getResolvedUri(context: Context, state: ImageState): Uri? {
+        val path = state.imageRelativePath ?: return null
+        return Uri.fromFile(File(PlaylistShareManager.getExternalFilesDir(context), path))
+    }
+
+    override fun getExternalFiles(state: ImageState): List<String> {
+        val path = state.imageRelativePath ?: return emptyList()
+        return listOf(path)
+    }
+
     @Composable
     override fun EditorUI(state: ImageState, onStateChange: (ImageState) -> Unit) {
         val context = androidx.compose.ui.platform.LocalContext.current
@@ -65,26 +75,32 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         ) { uri: Uri? ->
             uri?.let { contentUri ->
                 coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    AppNotifier.runWithGlobalLog("Failed to import image") {
-                        val inputStream = context.contentResolver.openInputStream(contentUri)
-                            ?: throw IllegalStateException("Could not open image file")
-                        
-                        val file = java.io.File(context.filesDir, "img_${UUID.randomUUID()}.png")
-                        file.outputStream().use { out -> inputStream.use { it.copyTo(out) } }
-                        val localUri = Uri.fromFile(file).toString()
-                        
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            onStateChange(state.copy(imageUri = localUri))
+                    try {
+                        AppNotifier.runWithGlobalLog("Failed to import image") {
+                            val inputStream = context.contentResolver.openInputStream(contentUri)
+                                ?: throw IllegalStateException("Could not open image file")
+                            
+                            val externalFilesDir = PlaylistShareManager.getExternalFilesDir(context)
+                            val relativePath = "img_${UUID.randomUUID()}.png"
+                            val file = File(externalFilesDir, relativePath)
+                            file.outputStream().use { out -> inputStream.use { it.copyTo(out) } }
+                            
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                onStateChange(state.copy(imageRelativePath = relativePath))
+                            }
                         }
+                    } catch (_: Exception) {
+                        // Already logged and broadcasted by runWithGlobalLog, catch to prevent crash
                     }
                 }
             }
         }
 
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            if (state.imageUri != null) {
+            val resolvedUri = getResolvedUri(context, state)
+            if (resolvedUri != null) {
                 AsyncImage(
-                    model = state.imageUri,
+                    model = resolvedUri,
                     contentDescription = "Selected Image",
                     modifier = Modifier
                         .fillMaxWidth()
@@ -149,12 +165,11 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     }
 
     override fun print(context: Context, state: ImageState, printer: EscPosPrinter) {
-        val uriStr = state.imageUri ?: run {
+        val uri = getResolvedUri(context, state) ?: run {
             printer.printFormattedText("[${state.align}]No Image Selected\n", 0f)
             return
         }
 
-        val uri = uriStr.toUri()
         val originalBitmap = loadBitmapFromUri(context, uri)
         
         val maxWidth = printer.printerWidthPx

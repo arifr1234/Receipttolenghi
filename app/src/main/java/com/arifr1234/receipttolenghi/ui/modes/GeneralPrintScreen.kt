@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -142,13 +143,16 @@ fun GeneralPrintScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GeneralPrintMain(
     onNavigateBack: () -> Unit,
     onNavigateToPlaylists: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val historyDisk = remember { PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID) }
+    val historyEditor = rememberObservablePersistentState(historyDisk)
+    val history by historyEditor.stateFlow.collectAsState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -170,6 +174,11 @@ fun GeneralPrintMain(
                 modifier = Modifier.padding(start = 8.dp)
             )
             Spacer(modifier = Modifier.weight(1f))
+            if (history.isNotEmpty()) {
+                IconButton(onClick = { historyEditor.set { emptyList() } }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Clear History")
+                }
+            }
             TextButton(onClick = onNavigateToPlaylists) {
                 Text("Playlists")
             }
@@ -181,10 +190,6 @@ fun GeneralPrintMain(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                val historyDisk = remember { PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID) }
-                val historyEditor = rememberObservablePersistentState(historyDisk)
-                val history by historyEditor.stateFlow.collectAsState()
-                
                 val listState = rememberLazyListState()
                 
                 LaunchedEffect(history.size) {

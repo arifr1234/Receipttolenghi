@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.createBitmap
 import coil.compose.AsyncImage
 import com.arifr1234.receipttolenghi.printer.DitheringEngine
 import com.dantsu.escposprinter.EscPosPrinter
@@ -26,7 +27,10 @@ import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import java.util.UUID
 import androidx.core.graphics.scale
+import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.utils.AppNotifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 enum class ImageSize(val label: String) {
@@ -74,18 +78,21 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
             uri?.let { contentUri ->
-                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                coroutineScope.launch(Dispatchers.IO) {
                     try {
                         AppNotifier.runWithGlobalLog("Failed to import image") {
-                            val inputStream = context.contentResolver.openInputStream(contentUri)
-                                ?: throw IllegalStateException("Could not open image file")
-                            
                             val externalFilesDir = PlaylistShareManager.getExternalFilesDir(context)
                             val relativePath = "img_${UUID.randomUUID()}.png"
                             val file = File(externalFilesDir, relativePath)
-                            file.outputStream().use { out -> inputStream.use { it.copyTo(out) } }
                             
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            val originalBitmap = loadBitmapFromUri(context, contentUri)
+                            val scaledBitmap = scaleBitmapToSize(originalBitmap, PrinterManager.MAX_PRINTER_WIDTH_PX, ImageSize.ORIGINAL)
+                            
+                            file.outputStream().use { out -> 
+                                scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                            }
+                            
+                            withContext(Dispatchers.Main) {
                                 onStateChange(state.copy(imageRelativePath = relativePath))
                             }
                         }

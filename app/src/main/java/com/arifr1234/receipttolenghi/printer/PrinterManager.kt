@@ -3,6 +3,7 @@ package com.arifr1234.receipttolenghi.printer
 import android.annotation.SuppressLint
 import com.arifr1234.receipttolenghi.utils.AppNotifier
 import com.dantsu.escposprinter.EscPosPrinter
+import com.dantsu.escposprinter.connection.DeviceConnection
 import com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +14,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 object PrinterManager {
+    const val PRINTER_DPI = 203
+    const val PRINTER_WIDTH_MM = 48f
+    const val PRINTER_NBR_CHARACTERS_PER_LINE = 32
+
+    val MAX_PRINTER_WIDTH_PX: Int by lazy {
+        EscPosPrinter(null as DeviceConnection?, PRINTER_DPI, PRINTER_WIDTH_MM, PRINTER_NBR_CHARACTERS_PER_LINE).printerWidthPx
+    }
+
     private var printer: EscPosPrinter? = null
 
     private val printScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -60,7 +69,7 @@ object PrinterManager {
                 
                 if (connection != null) {
                     // Initialize the printer globally
-                    printer = EscPosPrinter(connection, 203, 48f, 32)
+                    printer = EscPosPrinter(connection, PRINTER_DPI, PRINTER_WIDTH_MM, PRINTER_NBR_CHARACTERS_PER_LINE)
                     val printerType = if (isMock) "Mock Printer" else "Printer"
                     AppNotifier.showMessage("Connected to $printerType!")
                     true

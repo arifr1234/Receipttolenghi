@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -150,8 +151,23 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             val resolvedUri = getResolvedUri(context, state)
             
             var previewDithered by remember { mutableStateOf(false) }
+            var originalImage by remember { mutableStateOf<Bitmap?>(null) }
             var ditheredImage by remember { mutableStateOf<Bitmap?>(null) }
-            
+            var currentPainter by remember { mutableStateOf<Painter?>(null) }
+
+            LaunchedEffect(resolvedUri) {
+                currentPainter = null
+                if (resolvedUri == null) {
+                    originalImage = null
+                    return@LaunchedEffect
+                }
+                withContext(Dispatchers.IO) {
+                    AppNotifier.runWithGlobalLog("Failed to load original image") {
+                        originalImage = loadBitmapFromUri(context, resolvedUri)
+                    }
+                }
+            }
+
             LaunchedEffect(
                 resolvedUri,
                 state.size,
@@ -159,8 +175,10 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 state.brightnessMultiplier,
                 state.brightnessCurve
             ) {
-                ditheredImage = null
-                resolvedUri ?: return@LaunchedEffect
+                if (resolvedUri == null) {
+                    ditheredImage = null
+                    return@LaunchedEffect
+                }
                 
                 withContext(Dispatchers.IO) {
                     AppNotifier.runWithGlobalLog("Failed to generate dithered preview") {
@@ -172,9 +190,12 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             val maxImageHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.5f).toDp() }
 
             if (resolvedUri != null) {
+                val displayBitmap = if (previewDithered) (ditheredImage ?: originalImage) else (originalImage ?: ditheredImage)
                 AsyncImage(
-                    model = (if (previewDithered) ditheredImage else null) ?: resolvedUri,
+                    model = displayBitmap ?: resolvedUri,
                     contentDescription = if (previewDithered) "Dithered Image Preview" else "Selected Image",
+                    placeholder = currentPainter,
+                    onSuccess = { currentPainter = it.painter },
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = maxImageHeight),

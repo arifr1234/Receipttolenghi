@@ -3,6 +3,7 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
@@ -19,13 +20,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +50,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import coil.compose.AsyncImage
 import com.arifr1234.receipttolenghi.printer.DitheringEngine
@@ -54,6 +64,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
@@ -68,11 +80,18 @@ enum class DitheringAlgorithm(val label: String, val applyAlgo: (Bitmap) -> Bitm
     FLOYD_STEINBERG("Floyd-Steinberg", DitheringEngine::applyFloydSteinberg)
 }
 
+enum class BrightnessCurve(val label: String, val transform: (x: Double, m: Double) -> Double) {
+    CURVE("Curve", { x, m -> 1.0 - (1.0 - x).pow(m) }),
+    LINEAR("Linear", { x, m -> (x * m).coerceAtMost(1.0) })
+}
+
 data class ImageState(
     val imageRelativePath: String? = null,
     val align: PrintAlignment = PrintAlignment.CENTER,
     val ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
-    val size: ImageSize = ImageSize.FULL
+    val size: ImageSize = ImageSize.FULL,
+    val brightnessMultiplier: Float = 2.0f,
+    val brightnessCurve: BrightnessCurve = BrightnessCurve.CURVE
 ) : PrintableState
 
 object ImagePrintableDefinition : PrintableDefinition<ImageState> {
@@ -133,7 +152,13 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             var previewDithered by remember { mutableStateOf(false) }
             var ditheredImage by remember { mutableStateOf<Bitmap?>(null) }
             
-            LaunchedEffect(resolvedUri, state.size, state.ditheringAlgorithm) {
+            LaunchedEffect(
+                resolvedUri,
+                state.size,
+                state.ditheringAlgorithm,
+                state.brightnessMultiplier,
+                state.brightnessCurve
+            ) {
                 ditheredImage = null
                 resolvedUri ?: return@LaunchedEffect
                 
@@ -204,6 +229,21 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
 
     @Composable
     override fun ConfigUI(state: ImageState, onStateChange: (ImageState) -> Unit) {
+        var showBrightnessInfo by remember { mutableStateOf(false) }
+
+        if (showBrightnessInfo) {
+            AlertDialog(
+                onDismissRequest = { showBrightnessInfo = false },
+                confirmButton = {
+                    TextButton(onClick = { showBrightnessInfo = false }) {
+                        Text("OK")
+                    }
+                },
+                title = { Text("Brightness Compensation") },
+                text = { Text("Thermally printed images tend to appear darker.") }
+            )
+        }
+
         Column {
             Text("Alignment", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -236,7 +276,6 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             }
             Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
             Text("Size", style = MaterialTheme.typography.labelMedium)
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ImageSize.entries.forEach { imageSize ->
@@ -247,6 +286,47 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Brightness section
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Brightness (%.1fx)".format(state.brightnessMultiplier),
+                    style = MaterialTheme.typography.labelMedium
+                )
+                IconButton(
+                    onClick = { showBrightnessInfo = true },
+                    modifier = Modifier.size(28.dp).padding(start = 2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = "Brightness Info",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        BrightnessCurve.entries.forEach { curve ->
+                            FilterChip(
+                                selected = state.brightnessCurve == curve,
+                                onClick = { onStateChange(state.copy(brightnessCurve = curve)) },
+                                label = { Text(curve.label) }
+                            )
+                        }
+                    }
+                }
+            }
+            Slider(
+                value = state.brightnessMultiplier,
+                onValueChange = { onStateChange(state.copy(brightnessMultiplier = (it * 10f).roundToInt() / 10f)) },
+                valueRange = 1f..4f,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 
@@ -268,7 +348,36 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     private fun generateDitheredBitmap(context: Context, uri: Uri, state: ImageState, maxWidth: Int): Bitmap {
         val originalBitmap = loadBitmapFromUri(context, uri)
         val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
-        return state.ditheringAlgorithm.applyAlgo(scaledBitmap)
+        val toneAdjustedBitmap = applyToneCurve(scaledBitmap, state.brightnessMultiplier, state.brightnessCurve)
+        return state.ditheringAlgorithm.applyAlgo(toneAdjustedBitmap)
+    }
+
+    private fun applyToneCurve(bitmap: Bitmap, multiplier: Float, curve: BrightnessCurve): Bitmap {
+        if (multiplier == 1f) return bitmap
+
+        val lut = IntArray(256) { i ->
+            val x = i / 255.0
+            val newX = curve.transform(x, multiplier.toDouble())
+            (newX * 255.0).roundToInt().coerceIn(0, 255)
+        }
+
+        val width = bitmap.width
+        val height = bitmap.height
+        val pixels = IntArray(width * height)
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val a = Color.alpha(p)
+            val r = lut[Color.red(p)]
+            val g = lut[Color.green(p)]
+            val b = lut[Color.blue(p)]
+            pixels[i] = Color.argb(a, r, g, b)
+        }
+
+        val outBitmap = createBitmap(width, height)
+        outBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        return outBitmap
     }
 
     private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {

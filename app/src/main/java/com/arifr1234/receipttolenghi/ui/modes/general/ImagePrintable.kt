@@ -245,18 +245,6 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         }
 
         Column {
-            Text("Alignment", style = MaterialTheme.typography.labelMedium)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PrintAlignment.entries.forEach { alignment ->
-                    FilterChip(
-                        selected = state.align == alignment,
-                        onClick = { onStateChange(state.copy(align = alignment)) },
-                        label = { Text(alignment.label) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
             Text("Dithering Algorithm", style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
@@ -272,18 +260,6 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                             label = { Text(algo.label) }
                         )
                     }
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text("Size", style = MaterialTheme.typography.labelMedium)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ImageSize.entries.forEach { imageSize ->
-                    FilterChip(
-                        selected = state.size == imageSize,
-                        onClick = { onStateChange(state.copy(size = imageSize)) },
-                        label = { Text(imageSize.label) }
-                    )
                 }
             }
 
@@ -327,6 +303,32 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 valueRange = 1f..4f,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text("Size", style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ImageSize.entries.forEach { imageSize ->
+                    FilterChip(
+                        selected = state.size == imageSize,
+                        onClick = { onStateChange(state.copy(size = imageSize)) },
+                        label = { Text(imageSize.label) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text("Alignment", style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PrintAlignment.entries.forEach { alignment ->
+                    FilterChip(
+                        selected = state.align == alignment,
+                        onClick = { onStateChange(state.copy(align = alignment)) },
+                        label = { Text(alignment.label) }
+                    )
+                }
+            }
         }
     }
 

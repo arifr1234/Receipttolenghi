@@ -3,9 +3,6 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 
 import android.content.Context
 import android.graphics.Bitmap
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
@@ -13,6 +10,7 @@ import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -22,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.scale
@@ -142,13 +144,15 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 }
             }
 
+            val maxImageHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.5f).toDp() }
+
             if (resolvedUri != null) {
                 AsyncImage(
                     model = (if (previewDithered) ditheredImage else null) ?: resolvedUri,
                     contentDescription = if (previewDithered) "Dithered Image Preview" else "Selected Image",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 200.dp),
+                        .heightIn(max = maxImageHeight),
                     contentScale = ContentScale.Fit,
                     filterQuality = FilterQuality.None
                 )

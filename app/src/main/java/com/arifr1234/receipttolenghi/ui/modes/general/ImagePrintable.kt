@@ -1,5 +1,6 @@
 package com.arifr1234.receipttolenghi.ui.modes.general
 
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
@@ -8,30 +9,46 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.createBitmap
+import androidx.core.graphics.scale
 import coil.compose.AsyncImage
 import com.arifr1234.receipttolenghi.printer.DitheringEngine
+import com.arifr1234.receipttolenghi.printer.PrinterManager
+import com.arifr1234.receipttolenghi.utils.AppNotifier
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
-import java.util.UUID
-import androidx.core.graphics.scale
-import com.arifr1234.receipttolenghi.printer.PrinterManager
-import com.arifr1234.receipttolenghi.utils.AppNotifier
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
@@ -105,19 +122,50 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
 
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             val resolvedUri = getResolvedUri(context, state)
+            
+            var previewDithered by remember { mutableStateOf(false) }
+            var ditheredImage by remember { mutableStateOf<Bitmap?>(null) }
+            
+            LaunchedEffect(resolvedUri, state.size, state.ditheringAlgorithm) {
+                ditheredImage = null
+                resolvedUri ?: return@LaunchedEffect
+                
+                withContext(Dispatchers.IO) {
+                    AppNotifier.runWithGlobalLog("Failed to generate dithered preview") {
+                        ditheredImage = generateDitheredBitmap(context, resolvedUri, state, PrinterManager.MAX_PRINTER_WIDTH_PX)
+                    }
+                }
+            }
+
             if (resolvedUri != null) {
                 AsyncImage(
-                    model = resolvedUri,
-                    contentDescription = "Selected Image",
+                    model = (if (previewDithered) ditheredImage else null) ?: resolvedUri,
+                    contentDescription = if (previewDithered) "Dithered Image Preview" else "Selected Image",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 200.dp)
-                        .clickable { launcher.launch("image/*") },
-                    contentScale = ContentScale.Fit
+                        .heightIn(max = 200.dp),
+                    contentScale = ContentScale.Fit,
+                    filterQuality = FilterQuality.None
                 )
-            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Button(onClick = { launcher.launch("image/*") }) {
                     Text("Select Image")
+                }
+                if (resolvedUri != null) {
+                    FilterChip(
+                        selected = previewDithered,
+                        onClick = { previewDithered = !previewDithered },
+                        label = { Text("Preview") }
+                    )
                 }
             }
         }
@@ -177,17 +225,19 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
             return
         }
 
-        val originalBitmap = loadBitmapFromUri(context, uri)
-        
-        val maxWidth = printer.printerWidthPx
-        val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
-        val ditheredBitmap = state.ditheringAlgorithm.applyAlgo(scaledBitmap)
+        val ditheredBitmap = generateDitheredBitmap(context, uri, state, printer.printerWidthPx)
 
         // Bypass EscPosPrinterSize limit of 256 height by calling the command directly
         val bytes = EscPosPrinterCommands.bitmapToBytes(ditheredBitmap, false)
         val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
         
         printer.printFormattedText("[${state.align.tag}]<img>$hexString</img>\n", 0f)
+    }
+
+    private fun generateDitheredBitmap(context: Context, uri: Uri, state: ImageState, maxWidth: Int): Bitmap {
+        val originalBitmap = loadBitmapFromUri(context, uri)
+        val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
+        return state.ditheringAlgorithm.applyAlgo(scaledBitmap)
     }
 
     private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {

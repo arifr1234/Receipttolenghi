@@ -17,6 +17,11 @@ val googleFontsApiKey: String = System.getenv("GOOGLE_FONTS_API_KEY")
     ?: localProperties.getProperty("GOOGLE_FONTS_API_KEY") 
     ?: ""
 
+val keystorePath: String? = System.getenv("KEYSTORE_PATH") ?: localProperties.getProperty("KEYSTORE_PATH")
+val keystorePassword: String? = System.getenv("KEYSTORE_PASSWORD") ?: localProperties.getProperty("KEYSTORE_PASSWORD")
+val keyAliasStr: String? = System.getenv("KEY_ALIAS") ?: localProperties.getProperty("KEY_ALIAS")
+val keyPasswordStr: String? = System.getenv("KEY_PASSWORD") ?: localProperties.getProperty("KEY_PASSWORD")
+
 android {
     namespace = "com.arifr1234.receipttolenghi"
     compileSdk = 37
@@ -33,8 +38,31 @@ android {
         buildConfigField("String", "GOOGLE_FONTS_API_KEY", "\"$googleFontsApiKey\"")
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePath != null) {
+                val keystoreFile = rootProject.file(keystorePath).takeIf { it.exists() } 
+                    ?: file(keystorePath).takeIf { it.exists() }
+                if (keystoreFile != null) {
+                    storeFile = keystoreFile
+                    storePassword = keystorePassword
+                    keyAlias = keyAliasStr
+                    keyPassword = keyPasswordStr
+                }
+            }
+        }
+    }
+
     buildTypes {
         release {
+            val isReleaseKeystoreAvailable = keystorePath != null && (
+                rootProject.file(keystorePath).exists() || file(keystorePath).exists()
+            )
+            signingConfig = if (isReleaseKeystoreAvailable) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             optimization {
                 enable = false
             }

@@ -3,6 +3,9 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
@@ -91,33 +94,35 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         val context = androidx.compose.ui.platform.LocalContext.current
         val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
-        val launcher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
-        ) { uri: Uri? ->
-            uri?.let { contentUri ->
-                coroutineScope.launch(Dispatchers.IO) {
-                    try {
-                        AppNotifier.runWithGlobalLog("Failed to import image") {
-                            val externalFilesDir = PlaylistShareManager.getExternalFilesDir(context)
-                            val relativePath = "img_${UUID.randomUUID()}.png"
-                            val file = File(externalFilesDir, relativePath)
-                            
-                            val originalBitmap = loadBitmapFromUri(context, contentUri)
-                            val scaledBitmap = scaleBitmapToSize(originalBitmap, PrinterManager.MAX_PRINTER_WIDTH_PX, ImageSize.ORIGINAL)
-                            
-                            file.outputStream().use { out -> 
-                                scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                            }
-                            
-                            withContext(Dispatchers.Main) {
-                                onStateChange(state.copy(imageRelativePath = relativePath))
-                            }
-                        }
-                    } catch (_: Exception) {
-                        // Already logged and broadcasted by runWithGlobalLog, catch to prevent crash
+        fun saveBitmap(bitmap: Bitmap) {
+            coroutineScope.launch(Dispatchers.IO) {
+                AppNotifier.runWithGlobalLog("Failed to import image") {
+                    val externalFilesDir = PlaylistShareManager.getExternalFilesDir(context)
+                    val relativePath = "img_${UUID.randomUUID()}.png"
+                    val file = File(externalFilesDir, relativePath)
+                    
+                    val scaledBitmap = scaleBitmapToSize(bitmap, PrinterManager.MAX_PRINTER_WIDTH_PX, ImageSize.ORIGINAL)
+                    file.outputStream().use { out -> 
+                        scaledBitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                    }
+                    
+                    withContext(Dispatchers.Main) {
+                        onStateChange(state.copy(imageRelativePath = relativePath))
                     }
                 }
             }
+        }
+
+        val galleryLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri: Uri? ->
+            uri?.let { saveBitmap(loadBitmapFromUri(context, it)) }
+        }
+
+        val cameraLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicturePreview()
+        ) { bitmap: Bitmap? ->
+            bitmap?.let { saveBitmap(it) }
         }
 
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -157,8 +162,30 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(onClick = { launcher.launch("image/*") }) {
-                    Text("Select Image")
+                var showMenu by remember { mutableStateOf(false) }
+                Box {
+                    Button(onClick = { showMenu = true }) {
+                        Text("Select Image")
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Gallery") },
+                            onClick = {
+                                showMenu = false
+                                galleryLauncher.launch("image/*")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Camera") },
+                            onClick = {
+                                showMenu = false
+                                cameraLauncher.launch(null)
+                            }
+                        )
+                    }
                 }
                 if (resolvedUri != null) {
                     FilterChip(

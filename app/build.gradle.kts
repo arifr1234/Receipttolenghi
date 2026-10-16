@@ -54,7 +54,12 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appName"] = "(Debug) Receipttolenghi"
+        }
         release {
+            manifestPlaceholders["appName"] = "@string/app_name"
             val isReleaseKeystoreAvailable = keystorePath != null && (
                 rootProject.file(keystorePath).exists() || file(keystorePath).exists()
             )

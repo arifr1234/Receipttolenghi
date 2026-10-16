@@ -80,22 +80,34 @@ fun GeneralPrintScreen(
         val (itemToMove, oldPlaylistId) = changePlaylistContext!!
         ChangePlaylistBottomSheet(
             onDismissRequest = { changePlaylistContext = null },
+            showRemoveOption = oldPlaylistId != null,
             onPlaylistSelected = { playlist ->
                 // Remove from old
                 if (oldPlaylistId != null) {
                     PlaylistManager.DiskPlaylist(oldPlaylistId).set { it.filter { i -> i.id != itemToMove.id } }
                 }
                 // Add to new
-                PlaylistManager.DiskPlaylist(playlist.id).set { it + itemToMove }
+                if (playlist != null) {
+                    PlaylistManager.DiskPlaylist(playlist.id).set { it + itemToMove }
+                }
                 
                 changePlaylistContext = null
                 coroutineScope.launch {
                     snackbarHostState.currentSnackbarData?.dismiss()
-                    snackbarHostState.showSnackbar(
-                        message = "Added to ${playlist.userMetadata.name}",
-                        withDismissAction = true,
-                        duration = SnackbarDuration.Short
-                    )
+                    val message = if (playlist != null) {
+                        "Added to ${playlist.userMetadata.name}"
+                    } else if (oldPlaylistId != null) {
+                        val oldName = PlaylistManager.getPlaylistHeader(oldPlaylistId).userMetadata.name
+                        "Removed from $oldName"
+                    } else null
+
+                    if (message != null) {
+                        snackbarHostState.showSnackbar(
+                            message = message,
+                            withDismissAction = true,
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 }
             }
         )

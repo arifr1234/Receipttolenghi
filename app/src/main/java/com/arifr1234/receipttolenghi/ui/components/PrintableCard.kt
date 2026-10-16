@@ -25,17 +25,9 @@ import android.content.ClipData
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.CircleShape
 import kotlinx.coroutines.launch
 import com.arifr1234.receipttolenghi.printer.PrinterManager
+import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistHeader
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistItem
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableDefinition
@@ -56,7 +48,7 @@ fun <T : PrintableState> PrintableCard(
     clearAfterPrint: Boolean = false,
     isReadOnly: Boolean = false,
     isScrollable: Boolean = false,
-    onAddToPlaylist: ((T) -> Unit)? = LocalAddToPlaylist.current as? ((T) -> Unit)
+    onAddToPlaylist: ((T) -> Unit)? = if (state is PlaylistHeader) null else LocalAddToPlaylist.current as? ((T) -> Unit)
 ) {
     val context = LocalContext.current
     var isConfigExpanded by remember { mutableStateOf(false) }

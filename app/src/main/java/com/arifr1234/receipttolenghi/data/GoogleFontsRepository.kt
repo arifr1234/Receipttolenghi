@@ -30,8 +30,9 @@ object GoogleFontsRepository {
             
             val response = gson.fromJson(responseText, GoogleFontsResponse::class.java)
             if (response?.items != null) {
-                cachedFonts = response.items
-                return@withContext response.items
+                val nonColorFonts = response.items.filterNot { it.isColorFont }
+                cachedFonts = nonColorFonts
+                return@withContext nonColorFonts
             } else {
                 throw Exception("Failed to parse Google Fonts response")
             }

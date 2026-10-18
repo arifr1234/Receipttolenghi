@@ -17,6 +17,9 @@ data class GoogleFontFamily(
     val menu: String,
     val tags: List<FontTag>? = null
 ) {
+    val isColorFont: Boolean
+        get() = tags?.any { it.name == "/Technology/Color" } == true
+
     val significantTags: Map<String, List<String>>
         get() {
             val result = mutableMapOf<String, MutableList<String>>()

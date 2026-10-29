@@ -24,6 +24,7 @@ import com.arifr1234.receipttolenghi.ui.bluetooth.BluetoothScreen
 import com.arifr1234.receipttolenghi.ui.home.HomeScreen
 import java.io.File
 import com.arifr1234.receipttolenghi.ui.modes.GeneralPrintScreen
+import com.arifr1234.receipttolenghi.ui.modes.SpiralBannerScreen
 import com.arifr1234.receipttolenghi.ui.modes.TestPrinterScreen
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistShareManager
@@ -34,7 +35,8 @@ enum class AppRoute(val title: String) {
     HOME("Home"),
     BLUETOOTH("Bluetooth"),
     TEST_PRINTER("Test Printer"),
-    GENERAL_PRINT("General Print")
+    GENERAL_PRINT("General Print"),
+    SPIRAL_BANNER("Spiral Banner")
 }
 
 class MainActivity : ComponentActivity() {
@@ -49,6 +51,9 @@ class MainActivity : ComponentActivity() {
         },
         AppMode(AppRoute.GENERAL_PRINT) { modifier, onNavigateBack ->
             GeneralPrintScreen(onNavigateBack = onNavigateBack, modifier = modifier)
+        },
+        AppMode(AppRoute.SPIRAL_BANNER) { modifier, onNavigateBack ->
+            SpiralBannerScreen(onNavigateBack = onNavigateBack, modifier = modifier)
         },
     )
 

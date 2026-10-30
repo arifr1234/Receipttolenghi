@@ -75,77 +75,80 @@ import kotlin.math.roundToInt
 private const val CYLINDER_AGSL_SRC = """
 uniform shader uStrip;
 uniform float2 uResolution;
-uniform float2 uCylinderSize;
+uniform float uCylinderWidth;
 uniform float uRotation;
-uniform float uOrigWidth;
-uniform float uOrigHeight;
-uniform float uPaperWidthPx;
-uniform float uA;
-uniform float uSinTheta;
-uniform float uCosTheta;
-uniform float uStripHeightPx;
-uniform float uDitheredWidth;
-uniform float uDitheredHeight;
+uniform float2 uStripSize;
+uniform float2 uTurns;
 
 const float PI = 3.14159265359;
 
-float safeMod(float x, float m) {
-    return x - m * floor(x / m);
+bool raycastCylinder(
+    float2 fragCoord,
+    out float2 cylinderUv,
+    out float surfaceLighting
+) {
+    float cylinderRadius = uCylinderWidth * 0.5;
+    float relativeScreenX = fragCoord.x - (uResolution.x * 0.5);
+
+    if (abs(relativeScreenX) > cylinderRadius) {
+        return false;
+    }
+
+    float surfaceNormalX = relativeScreenX / cylinderRadius;
+    float surfaceNormalZ = sqrt(1.0 - surfaceNormalX * surfaceNormalX);
+    surfaceLighting = 0.35 + 0.65 * surfaceNormalZ;
+
+    float circumferentialAngle = mod(asin(surfaceNormalX) - uRotation, 2.0 * PI);
+    if (circumferentialAngle < 0.0) {
+        circumferentialAngle += 2.0 * PI;
+    }
+
+    // cylinderUv: [0.0, 1.0) x [0.0, 1.0] - Normalized cylinder surface UV
+    cylinderUv = float2(circumferentialAngle / (2.0 * PI), fragCoord.y / uResolution.y);
+    return true;
+}
+
+float2 mapCylinderToNormalizedStrip(float2 cylinderUv) {
+    // unwrappedSpiralCoord: [0.0, +inf) x [0.0, +inf) - Coordinates in spiral units:
+    // .x = width across paper strip in paper widths (integer = turn index k, fraction = width across strip)
+    // .y = length along paper strip in turn units
+    float2 unwrappedSpiralCoord = float2(
+        1.0 - cylinderUv.x + uTurns.x * cylinderUv.y,
+        cylinderUv.x + uTurns.y * cylinderUv.y
+    );
+
+    // wrappedStripCoord: [0.0, 1.0) x [0.0, totalTurns] - Position on physical strip (width [0..1), length in turns)
+    float helixTurnIndex = floor(unwrappedSpiralCoord.x);
+    float2 wrappedStripCoord = float2(mod(unwrappedSpiralCoord.x, 1.0), unwrappedSpiralCoord.y + helixTurnIndex);
+
+    float totalTurns = 1.0 + uTurns.x + uTurns.y;
+    // normalizedStripUv: [0.0, 1.0) x [0.0, 1.0] - Normalized UV across the paper strip (width [0..1), length [0..1])
+    float2 normalizedStripUv = float2(wrappedStripCoord.x, wrappedStripCoord.y / totalTurns);
+    return normalizedStripUv;
+}
+
+half4 sampleDitheredStrip(float2 normalizedStripUv) {
+    float2 continuousPixelCoord = normalizedStripUv * uStripSize;
+
+    // quantizedPixelCoord: [0.5, uStripSize.x - 0.5] x [0.5, uStripSize.y - 0.5] - Clamped half-integer pixel center for nearest-neighbor point sampling
+    float2 quantizedPixelCoord = clamp(floor(continuousPixelCoord) + 0.5, float2(0.5), uStripSize - 0.5);
+
+    return uStrip.eval(quantizedPixelCoord);
 }
 
 half4 main(float2 fragCoord) {
-    float2 center = uResolution * 0.5;
-    float radius = uCylinderSize.x * 0.5;
-    float cylTop = center.y - uCylinderSize.y * 0.5;
-    float cylBottom = center.y + uCylinderSize.y * 0.5;
+    float2 cylinderUv;
+    float surfaceLighting;
 
-    float xRel = fragCoord.x - center.x;
-    if (abs(xRel) > radius) {
-        return half4(0.0, 0.0, 0.0, 0.0);
+    if (!raycastCylinder(fragCoord, cylinderUv, surfaceLighting)) {
+        return half4(0.0);
     }
 
-    float nx = clamp(xRel / radius, -1.0, 1.0);
-    float nz = sqrt(max(0.0, 1.0 - nx * nx));
+    // normalizedStripUv: [0.0, 1.0) x [0.0, 1.0] - Normalized UV on flat paper strip (width [0..1), length [0..1])
+    float2 normalizedStripUv = mapCylinderToNormalizedStrip(cylinderUv);
 
-    float poleTop = cylTop - 20.0;
-    float poleBottom = cylBottom + 20.0;
-    if (fragCoord.y < poleTop || fragCoord.y > poleBottom) {
-        return half4(0.0, 0.0, 0.0, 0.0);
-    }
-
-    if (fragCoord.y < cylTop || fragCoord.y > cylBottom) {
-        half poleColor = half(0.18 + 0.12 * nz);
-        return half4(poleColor, poleColor, poleColor, 1.0);
-    }
-
-    float alpha = asin(nx);
-    float phi = safeMod(alpha - uRotation, 2.0 * PI);
-
-    float u0 = (phi / (2.0 * PI)) * uOrigWidth;
-    float v = ((fragCoord.y - cylTop) / uCylinderSize.y) * uOrigHeight;
-
-    float uPrime = u0 - uPaperWidthPx * uSinTheta;
-    float vPrime = v + uA * uSinTheta;
-
-    float xp0 = -uSinTheta * uPrime + uCosTheta * vPrime;
-    float safePaperW = max(uPaperWidthPx, 1.0);
-    float k = floor(xp0 / safePaperW);
-    float xp = xp0 - k * safePaperW;
-    float yp = uCosTheta * (uPrime + k * uOrigWidth) + uSinTheta * vPrime;
-
-    if (yp < 0.0 || yp >= uStripHeightPx) {
-        half poleColor = half(0.18 + 0.12 * nz);
-        return half4(poleColor, poleColor, poleColor, 1.0);
-    }
-
-    float scaleX = uDitheredWidth / safePaperW;
-    float scaleY = uDitheredHeight / max(uStripHeightPx, 1.0);
-    float bmpX = clamp(floor(xp * scaleX) + 0.5, 0.5, max(uDitheredWidth - 0.5, 0.5));
-    float bmpY = clamp(floor(yp * scaleY) + 0.5, 0.5, max(uDitheredHeight - 0.5, 0.5));
-
-    half4 ditherColor = uStrip.eval(float2(bmpX, bmpY));
-    half lighting = half(0.35 + 0.65 * nz);
-    return half4(ditherColor.rgb * lighting, 1.0);
+    half4 ditherColor = sampleDitheredStrip(normalizedStripUv);
+    return half4(ditherColor.rgb * half(surfaceLighting), 1.0);
 }
 """
 
@@ -161,23 +164,19 @@ private class CylinderShaderRenderer {
         canvasWidth: Float,
         canvasHeight: Float,
         cylWidth: Float,
-        cylHeight: Float,
         rotation: Float
     ) {
         val bitmapShader = BitmapShader(ditheredBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         shader.setInputShader("uStrip", bitmapShader)
         shader.setFloatUniform("uResolution", canvasWidth, canvasHeight)
-        shader.setFloatUniform("uCylinderSize", cylWidth, cylHeight)
+        shader.setFloatUniform("uCylinderWidth", cylWidth)
         shader.setFloatUniform("uRotation", rotation)
-        shader.setFloatUniform("uOrigWidth", geometry.originalWidth.toFloat())
-        shader.setFloatUniform("uOrigHeight", geometry.originalHeight.toFloat())
-        shader.setFloatUniform("uPaperWidthPx", geometry.paperWidthPx)
-        shader.setFloatUniform("uA", geometry.a)
-        shader.setFloatUniform("uSinTheta", geometry.sinTheta)
-        shader.setFloatUniform("uCosTheta", geometry.cosTheta)
-        shader.setFloatUniform("uStripHeightPx", geometry.stripHeightPx.toFloat())
-        shader.setFloatUniform("uDitheredWidth", ditheredBitmap.width.toFloat())
-        shader.setFloatUniform("uDitheredHeight", ditheredBitmap.height.toFloat())
+        shader.setFloatUniform("uStripSize", ditheredBitmap.width.toFloat(), ditheredBitmap.height.toFloat())
+
+        val aspect = geometry.originalHeight.toFloat() / geometry.originalWidth.toFloat()
+        val nx = aspect * (geometry.cosTheta / geometry.sinTheta)
+        val ny = aspect * (geometry.sinTheta / geometry.cosTheta)
+        shader.setFloatUniform("uTurns", nx, ny)
 
         paint.shader = shader
         canvas.drawRect(0f, 0f, canvasWidth, canvasHeight, paint)
@@ -329,14 +328,7 @@ fun SpiralBannerScreen(
                                         }
                                 ) {
                                     val aspect = currentGeometry.originalWidth.toFloat() / (PI.toFloat() * currentGeometry.originalHeight.toFloat())
-                                    val maxW = size.width * 0.65f
-                                    val maxH = size.height * 0.72f
-                                    var cylW = maxH * aspect
-                                    var cylH = maxH
-                                    if (cylW > maxW) {
-                                        cylW = maxW
-                                        cylH = maxW / aspect
-                                    }
+                                    val cylW = (size.height * aspect).coerceAtMost(size.width * 0.9f)
 
                                     drawIntoCanvas { canvas ->
                                         shaderRenderer.render(
@@ -346,7 +338,6 @@ fun SpiralBannerScreen(
                                             canvasWidth = size.width,
                                             canvasHeight = size.height,
                                             cylWidth = cylW,
-                                            cylHeight = cylH,
                                             rotation = rotationAngle
                                         )
                                     }

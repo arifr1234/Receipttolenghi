@@ -57,6 +57,8 @@ import coil.compose.AsyncImage
 import com.arifr1234.receipttolenghi.printer.DitheringEngine
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.utils.AppNotifier
+import com.arifr1234.receipttolenghi.utils.ImageUtils
+import com.arifr1234.receipttolenghi.utils.scaleAntiAliased
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
@@ -404,19 +406,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     }
 
     private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val source = ImageDecoder.createSource(context.contentResolver, uri)
-                ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-                    decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-                }
-            } else {
-                @Suppress("DEPRECATION")
-                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-            }
-        } catch (e: Exception) {
-            throw IllegalStateException("Failed to load image file", e)
-        }
+        return ImageUtils.loadBitmapFromUri(context, uri)
     }
 
     private fun scaleBitmapToSize(bitmap: Bitmap, maxWidth: Int, sizeMode: ImageSize): Bitmap {
@@ -431,6 +421,6 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         val finalWidth = targetWidth.coerceAtLeast(1)
         val finalHeight = targetHeight.coerceAtLeast(1)
 
-        return bitmap.scale(finalWidth, finalHeight)
+        return bitmap.scaleAntiAliased(finalWidth, finalHeight)
     }
 }

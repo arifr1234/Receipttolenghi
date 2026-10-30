@@ -9,13 +9,11 @@ import android.graphics.Paint
 import android.graphics.Shader
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import com.arifr1234.receipttolenghi.utils.scaleAntiAliased
 import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 data class SpiralGeometry(
@@ -147,7 +145,7 @@ object SpiralBannerEngine {
         val scale = targetWidth.toFloat() / unwrappedStrip.width.toFloat()
         val targetHeight = max((unwrappedStrip.height.toFloat() * scale).roundToInt(), 1)
 
-        val scaledStrip = unwrappedStrip.scale(targetWidth, targetHeight)
+        val scaledStrip = unwrappedStrip.scaleAntiAliased(targetWidth, targetHeight)
         return DitheringEngine.applyFloydSteinberg(scaledStrip)
     }
 
@@ -164,6 +162,6 @@ object SpiralBannerEngine {
         val scale = maxDimension.toFloat() / maxDim.toFloat()
         val newW = max((width * scale).roundToInt(), 1)
         val newH = max((height * scale).roundToInt(), 1)
-        return bitmap.scale(newW, newH)
+        return bitmap.scaleAntiAliased(newW, newH)
     }
 }

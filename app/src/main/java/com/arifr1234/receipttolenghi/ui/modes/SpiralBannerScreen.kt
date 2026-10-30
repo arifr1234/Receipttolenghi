@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.printer.SpiralBannerEngine
 import com.arifr1234.receipttolenghi.printer.SpiralGeometry
+import com.arifr1234.receipttolenghi.utils.ImageUtils
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import kotlinx.coroutines.Dispatchers
@@ -205,7 +206,7 @@ fun SpiralBannerScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            val loadedBitmap = loadBitmapFromUri(context, uri)
+            val loadedBitmap = ImageUtils.loadBitmapFromUri(context, uri)
             sourceBitmap = SpiralBannerEngine.prepareSourceBitmap(loadedBitmap)
         }
     }
@@ -487,18 +488,5 @@ fun SpiralBannerScreen(
                 }
             }
         }
-    }
-}
-
-private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val source = ImageDecoder.createSource(context.contentResolver, uri)
-        ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
-            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-            decoder.isMutableRequired = true
-        }
-    } else {
-        @Suppress("DEPRECATION")
-        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
     }
 }

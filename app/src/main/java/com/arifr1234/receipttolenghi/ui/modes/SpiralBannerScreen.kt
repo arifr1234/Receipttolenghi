@@ -311,7 +311,7 @@ fun SpiralBannerScreen(
                                         .fillMaxSize()
                                         .pointerInput(Unit) {
                                             detectHorizontalDragGestures { _, dragAmount ->
-                                                rotationAngle = (rotationAngle - dragAmount * 0.012f) % (2f * PI.toFloat())
+                                                rotationAngle += dragAmount * 0.012f
                                             }
                                         }
                                 ) {

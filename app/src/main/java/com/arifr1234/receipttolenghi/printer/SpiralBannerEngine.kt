@@ -8,7 +8,6 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 import com.arifr1234.receipttolenghi.utils.scaleAntiAliased
 import kotlin.math.PI
 import kotlin.math.max
@@ -17,18 +16,15 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 data class SpiralGeometry(
-    val originalWidth: Int,
-    val originalHeight: Int,
-    val paperWidthMm: Float,
-    val poleDiameterMm: Float,
-    val perimeterMm: Float,
     val paperWidthPx: Float,
     val a: Float,
-    val b: Float,
-    val c: Float,
     val stripHeightPx: Int,
     val sinTheta: Float,
-    val cosTheta: Float
+    val cosTheta: Float,
+    val turnsX: Float,
+    val turnsY: Float,
+    val cylinderAspectRatio: Float,
+    val estimatedLengthCm: Float
 )
 
 object SpiralBannerEngine {
@@ -49,32 +45,32 @@ object SpiralBannerEngine {
         val safeDiameter = max(poleDiameterMm, minDiameter)
         val perimeterMm = (PI * safeDiameter).toFloat()
 
-        val paperWidthPx = paperWidthMm * (originalWidth.toFloat() / perimeterMm)
-        val clampedPaperWidthPx = paperWidthPx.coerceAtMost(originalWidth.toFloat() * 0.999f)
+        val paperWidthPx = (paperWidthMm * (originalWidth.toFloat() / perimeterMm))
+            .coerceAtMost(originalWidth.toFloat() * 0.999f)
 
-        val wOrigSq = originalWidth.toFloat().pow(2)
-        val wPaperSq = clampedPaperWidthPx.pow(2)
-        val a = sqrt(wOrigSq - wPaperSq)
-        val b = (clampedPaperWidthPx * originalWidth.toFloat()) / a
-        val c = wPaperSq / a
-        val stripHeightPx = (a + (a + c) * (originalHeight.toFloat() / b)).roundToInt()
-
-        val sinTheta = clampedPaperWidthPx / originalWidth.toFloat()
+        val a = sqrt(originalWidth.toFloat().pow(2) - paperWidthPx.pow(2))
+        val sinTheta = paperWidthPx / originalWidth.toFloat()
         val cosTheta = a / originalWidth.toFloat()
 
+        val stripHeightPx = max((a + originalHeight.toFloat() / sinTheta).roundToInt(), 1)
+
+        val imageAspect = originalHeight.toFloat() / originalWidth.toFloat()
+        val turnsX = imageAspect * (cosTheta / sinTheta)
+        val turnsY = imageAspect * (sinTheta / cosTheta)
+
+        val cylinderAspectRatio = originalWidth.toFloat() / (PI.toFloat() * originalHeight.toFloat())
+        val estimatedLengthCm = (stripHeightPx.toFloat() / paperWidthPx) * (paperWidthMm / 10f)
+
         return SpiralGeometry(
-            originalWidth = originalWidth,
-            originalHeight = originalHeight,
-            paperWidthMm = paperWidthMm,
-            poleDiameterMm = safeDiameter,
-            perimeterMm = perimeterMm,
-            paperWidthPx = clampedPaperWidthPx,
+            paperWidthPx = paperWidthPx,
             a = a,
-            b = b,
-            c = c,
-            stripHeightPx = max(stripHeightPx, 1),
+            stripHeightPx = stripHeightPx,
             sinTheta = sinTheta,
-            cosTheta = cosTheta
+            cosTheta = cosTheta,
+            turnsX = turnsX,
+            turnsY = turnsY,
+            cylinderAspectRatio = cylinderAspectRatio,
+            estimatedLengthCm = estimatedLengthCm
         )
     }
 
@@ -92,30 +88,17 @@ object SpiralBannerEngine {
 
         val shader = BitmapShader(sourceBitmap, Shader.TileMode.REPEAT, Shader.TileMode.CLAMP)
 
-        // Matrix mapping Canvas coordinates (Xp, Yp) on the strip to Bitmap coordinates (U, V):
-        // U = Yp * cosTheta - Xp * sinTheta + Wp * sinTheta
-        // V = Yp * sinTheta + Xp * cosTheta - a * sinTheta
-        val canvasToBitmap = Matrix()
-        val vals = FloatArray(9)
-        vals[Matrix.MSCALE_X] = -geometry.sinTheta
-        vals[Matrix.MSKEW_X] = geometry.cosTheta
-        vals[Matrix.MTRANS_X] = geometry.paperWidthPx * geometry.sinTheta
-
-        vals[Matrix.MSKEW_Y] = geometry.cosTheta
-        vals[Matrix.MSCALE_Y] = geometry.sinTheta
-        vals[Matrix.MTRANS_Y] = -geometry.a * geometry.sinTheta
-
-        vals[Matrix.MPERSP_0] = 0f
-        vals[Matrix.MPERSP_1] = 0f
-        vals[Matrix.MPERSP_2] = 1f
-        canvasToBitmap.setValues(vals)
-
-        // In Skia/Android, shader.setLocalMatrix maps Shader space -> Canvas space,
-        // so we invert canvasToBitmap to get localMatrix:
-        val shaderMatrix = Matrix()
-        if (canvasToBitmap.invert(shaderMatrix)) {
-            shader.setLocalMatrix(shaderMatrix)
+        // Maps Bitmap coordinates (U, V) -> Strip coordinates (Xp, Yp):
+        // Xp = -sinTheta * U + cosTheta * V + Wp
+        // Yp =  cosTheta * U + sinTheta * V
+        val shaderMatrix = Matrix().apply {
+            setValues(floatArrayOf(
+                -geometry.sinTheta, geometry.cosTheta, geometry.paperWidthPx,
+                geometry.cosTheta, geometry.sinTheta, 0f,
+                0f, 0f, 1f
+            ))
         }
+        shader.setLocalMatrix(shaderMatrix)
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
             this.shader = shader

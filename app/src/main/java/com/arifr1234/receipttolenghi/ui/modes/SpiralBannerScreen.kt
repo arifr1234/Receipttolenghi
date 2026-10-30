@@ -71,6 +71,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val CYLINDER_AGSL_SRC = """
 uniform shader uStrip;
@@ -163,11 +164,7 @@ private class CylinderShaderRenderer {
         shader.setFloatUniform("uCylinderWidth", cylWidth)
         shader.setFloatUniform("uRotation", rotation)
         shader.setFloatUniform("uStripSize", ditheredBitmap.width.toFloat(), ditheredBitmap.height.toFloat())
-
-        val aspect = geometry.originalHeight.toFloat() / geometry.originalWidth.toFloat()
-        val nx = aspect * (geometry.cosTheta / geometry.sinTheta)
-        val ny = aspect * (geometry.sinTheta / geometry.cosTheta)
-        shader.setFloatUniform("uTurns", nx, ny)
+        shader.setFloatUniform("uTurns", geometry.turnsX, geometry.turnsY)
 
         paint.shader = shader
         canvas.drawRect(0f, 0f, canvasWidth, canvasHeight, paint)
@@ -204,7 +201,7 @@ fun SpiralBannerScreen(
     LaunchedEffect(sourceBitmap, poleDiameterMm) {
         val bmp = sourceBitmap ?: return@LaunchedEffect
         isProcessing = true
-        delay(120) // Debounce rapid slider movement
+        delay(120.milliseconds) // Debounce rapid slider movement
         withContext(Dispatchers.Default) {
             val geo = SpiralBannerEngine.calculateGeometry(
                 originalWidth = bmp.width,
@@ -318,8 +315,7 @@ fun SpiralBannerScreen(
                                             }
                                         }
                                 ) {
-                                    val aspect = currentGeometry.originalWidth.toFloat() / (PI.toFloat() * currentGeometry.originalHeight.toFloat())
-                                    val cylW = (size.height * aspect).coerceAtMost(size.width * 0.9f)
+                                    val cylW = (size.height * currentGeometry.cylinderAspectRatio).coerceAtMost(size.width * 0.9f)
 
                                     drawIntoCanvas { canvas ->
                                         shaderRenderer.render(
@@ -426,10 +422,7 @@ fun SpiralBannerScreen(
                             )
 
                             if (currentGeometry != null) {
-                                val stripLengthCm = String.format(
-                                    "%.1f",
-                                    (currentGeometry.stripHeightPx.toFloat() / currentGeometry.paperWidthPx) * (PrinterManager.PRINTER_WIDTH_MM / 10f)
-                                )
+                                val stripLengthCm = String.format("%.1f", currentGeometry.estimatedLengthCm)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween

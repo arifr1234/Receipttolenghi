@@ -24,14 +24,15 @@ data class SpiralGeometry(
     val turnsX: Float,
     val turnsY: Float,
     val cylinderAspectRatio: Float,
-    val estimatedLengthCm: Float
+    val estimatedLengthCm: Float,
+    val printableRatio: Float
 )
 
 object SpiralBannerEngine {
 
     const val MIN_POLE_DIAMETER_RATIO = 1.05f
 
-    fun getMinimumPoleDiameterMm(paperWidthMm: Float = PrinterManager.PRINTER_WIDTH_MM): Float {
+    fun getMinimumPoleDiameterMm(paperWidthMm: Float = PrinterManager.PAPER_WIDTH_MM): Float {
         return ((paperWidthMm / PI.toFloat()) * MIN_POLE_DIAMETER_RATIO)
     }
 
@@ -39,7 +40,8 @@ object SpiralBannerEngine {
         originalWidth: Int,
         originalHeight: Int,
         poleDiameterMm: Float,
-        paperWidthMm: Float = PrinterManager.PRINTER_WIDTH_MM
+        paperWidthMm: Float = PrinterManager.PAPER_WIDTH_MM,
+        printableWidthMm: Float = PrinterManager.PRINTABLE_WIDTH_MM
     ): SpiralGeometry {
         val minDiameter = getMinimumPoleDiameterMm(paperWidthMm)
         val safeDiameter = max(poleDiameterMm, minDiameter)
@@ -60,6 +62,7 @@ object SpiralBannerEngine {
 
         val cylinderAspectRatio = originalWidth.toFloat() / (PI.toFloat() * originalHeight.toFloat())
         val estimatedLengthCm = (stripHeightPx.toFloat() / paperWidthPx) * (paperWidthMm / 10f)
+        val printableRatio = (printableWidthMm / paperWidthMm).coerceIn(0.1f, 1.0f)
 
         return SpiralGeometry(
             paperWidthPx = paperWidthPx,
@@ -70,7 +73,8 @@ object SpiralBannerEngine {
             turnsX = turnsX,
             turnsY = turnsY,
             cylinderAspectRatio = cylinderAspectRatio,
-            estimatedLengthCm = estimatedLengthCm
+            estimatedLengthCm = estimatedLengthCm,
+            printableRatio = printableRatio
         )
     }
 
@@ -89,12 +93,13 @@ object SpiralBannerEngine {
         val shader = BitmapShader(sourceBitmap, Shader.TileMode.REPEAT, Shader.TileMode.CLAMP)
 
         // Maps Bitmap coordinates (U, V) -> Strip coordinates (Xp, Yp):
-        // Xp = -sinTheta * U + cosTheta * V + Wp
-        // Yp =  cosTheta * U + sinTheta * V
+        // Xp =  sinTheta * U + cosTheta * V
+        // Yp = -cosTheta * U + sinTheta * V + leadInHeightPx
+        // det = sinTheta^2 + cosTheta^2 = +1.0 (pure rotation without mirroring)
         val shaderMatrix = Matrix().apply {
             setValues(floatArrayOf(
-                -geometry.sinTheta, geometry.cosTheta, geometry.paperWidthPx,
-                geometry.cosTheta, geometry.sinTheta, 0f,
+                geometry.sinTheta, geometry.cosTheta, 0f,
+                -geometry.cosTheta, geometry.sinTheta, geometry.leadInHeightPx,
                 0f, 0f, 1f
             ))
         }
@@ -117,18 +122,29 @@ object SpiralBannerEngine {
     }
 
     /**
-     * Stage 2: Downscales the high-resolution unwrapped strip to printer resolution
-     * and applies Floyd-Steinberg dithering.
+     * Stage 2: Crops the centered printable section of the unwrapped strip,
+     * downscales it to printer resolution, and applies dithering.
      */
     fun processForPrinter(
         unwrappedStrip: Bitmap,
+        geometry: SpiralGeometry,
         printerWidthPx: Int = PrinterManager.MAX_PRINTER_WIDTH_PX
     ): Bitmap {
         val targetWidth = max(printerWidthPx, 1)
-        val scale = targetWidth.toFloat() / unwrappedStrip.width.toFloat()
-        val targetHeight = max((unwrappedStrip.height.toFloat() * scale).roundToInt(), 1)
 
-        val scaledStrip = unwrappedStrip.scaleAntiAliased(targetWidth, targetHeight)
+        // Extract centered printable section
+        val marginPx = ((unwrappedStrip.width * (1f - geometry.printableRatio)) * 0.5f).roundToInt()
+        val printableWidthPx = (unwrappedStrip.width - 2 * marginPx).coerceAtLeast(1)
+        val printableStrip = if (marginPx > 0 && printableWidthPx < unwrappedStrip.width) {
+            Bitmap.createBitmap(unwrappedStrip, marginPx, 0, printableWidthPx, unwrappedStrip.height)
+        } else {
+            unwrappedStrip
+        }
+
+        val scale = targetWidth.toFloat() / printableStrip.width.toFloat()
+        val targetHeight = max((printableStrip.height.toFloat() * scale).roundToInt(), 1)
+
+        val scaledStrip = printableStrip.scaleAntiAliased(targetWidth, targetHeight)
         return DitheringEngine.applyFloydSteinberg(scaledStrip)
     }
 

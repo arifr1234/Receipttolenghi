@@ -80,6 +80,7 @@ uniform float uCylinderWidth;
 uniform float uRotation;
 uniform float2 uStripSize;
 uniform float2 uTurns;
+uniform float uPrintableRatio;
 
 const float PI = 3.14159265359;
 
@@ -114,8 +115,8 @@ float2 mapCylinderToNormalizedStrip(float2 cylinderUv) {
     // .x = width across paper strip in paper widths (integer = turn index k, fraction = width across strip)
     // .y = length along paper strip in turn units
     float2 unwrappedSpiralCoord = float2(
-        1.0 - cylinderUv.x + uTurns.x * cylinderUv.y,
-        cylinderUv.x + uTurns.y * cylinderUv.y
+        cylinderUv.x + uTurns.x * cylinderUv.y,
+        1.0 - cylinderUv.x + uTurns.y * cylinderUv.y
     );
 
     // wrappedStripCoord: [0.0, 1.0) x [0.0, totalTurns] - Position on physical strip (width [0..1), length in turns)
@@ -136,10 +137,20 @@ half4 main(float2 fragCoord) {
         return half4(0.0);
     }
 
-    // normalizedStripUv: [0.0, 1.0) x [0.0, 1.0] - Normalized UV on flat paper strip (width [0..1), length [0..1])
+    // normalizedStripUv: [0.0, 1.0) x [0.0, 1.0] - Normalized UV on flat physical paper strip (width [0..1), length [0..1])
     float2 normalizedStripUv = mapCylinderToNormalizedStrip(cylinderUv);
 
-    half4 ditherColor = uStrip.eval(normalizedStripUv * uStripSize);
+    // Physical paper margins where the thermal print head cannot reach
+    float margin = (1.0 - uPrintableRatio) * 0.5;
+    if (normalizedStripUv.x < margin || normalizedStripUv.x > (1.0 - margin)) {
+        return half4(half3(surfaceLighting), 1.0);
+    }
+
+    // Inside printable area: map horizontally from [margin, 1.0 - margin] to [0.0, 1.0]
+    float printableU = (normalizedStripUv.x - margin) / uPrintableRatio;
+    float2 stripPixelCoord = float2(printableU, normalizedStripUv.y) * uStripSize;
+
+    half4 ditherColor = uStrip.eval(stripPixelCoord);
     return half4(ditherColor.rgb * half(surfaceLighting), 1.0);
 }
 """
@@ -165,6 +176,7 @@ private class CylinderShaderRenderer {
         shader.setFloatUniform("uRotation", rotation)
         shader.setFloatUniform("uStripSize", ditheredBitmap.width.toFloat(), ditheredBitmap.height.toFloat())
         shader.setFloatUniform("uTurns", geometry.turnsX, geometry.turnsY)
+        shader.setFloatUniform("uPrintableRatio", geometry.printableRatio)
 
         paint.shader = shader
         canvas.drawRect(0f, 0f, canvasWidth, canvasHeight, paint)
@@ -209,7 +221,7 @@ fun SpiralBannerScreen(
                 poleDiameterMm = poleDiameterMm
             )
             val unwrapped = SpiralBannerEngine.unwrapToStrip(bmp, geo)
-            val dithered = SpiralBannerEngine.processForPrinter(unwrapped)
+            val dithered = SpiralBannerEngine.processForPrinter(unwrapped, geo)
             geometry = geo
             ditheredStrip = dithered
             isProcessing = false

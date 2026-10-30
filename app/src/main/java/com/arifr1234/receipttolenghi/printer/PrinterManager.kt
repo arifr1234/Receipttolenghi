@@ -15,7 +15,9 @@ import kotlinx.coroutines.withContext
 
 object PrinterManager {
     const val PRINTER_DPI = 203
-    const val PRINTER_WIDTH_MM = 48f
+    const val PAPER_WIDTH_MM = 58f
+    const val PRINTABLE_WIDTH_MM = 48f
+    const val PRINTER_WIDTH_MM = PRINTABLE_WIDTH_MM
     const val PRINTER_NBR_CHARACTERS_PER_LINE = 32
 
     val MAX_PRINTER_WIDTH_PX: Int by lazy {

@@ -342,16 +342,6 @@ fun SpiralBannerScreen(
                                     )
                                 }
                             }
-
-                            // Subtle hint overlay
-                            Text(
-                                text = "Drag horizontally to spin 360°",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 8.dp)
-                            )
                         }
 
                         if (isProcessing) {
@@ -376,14 +366,8 @@ fun SpiralBannerScreen(
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.End
                         ) {
-                            Text(
-                                text = "Image: ${currentBitmap.width} × ${currentBitmap.height} px",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                             OutlinedButton(
                                 onClick = { imagePickerLauncher.launch("image/*") }
                             ) {
@@ -393,7 +377,7 @@ fun SpiralBannerScreen(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text("Change")
+                                Text("Change Image")
                             }
                         }
 

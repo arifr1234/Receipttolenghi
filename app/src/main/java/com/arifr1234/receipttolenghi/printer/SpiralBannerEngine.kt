@@ -17,7 +17,7 @@ import kotlin.math.sqrt
 
 data class SpiralGeometry(
     val paperWidthPx: Float,
-    val a: Float,
+    val leadInHeightPx: Float,
     val stripHeightPx: Int,
     val sinTheta: Float,
     val cosTheta: Float,
@@ -48,11 +48,11 @@ object SpiralBannerEngine {
         val paperWidthPx = (paperWidthMm * (originalWidth.toFloat() / perimeterMm))
             .coerceAtMost(originalWidth.toFloat() * 0.999f)
 
-        val a = sqrt(originalWidth.toFloat().pow(2) - paperWidthPx.pow(2))
+        val leadInHeightPx = sqrt(originalWidth.toFloat().pow(2) - paperWidthPx.pow(2))
         val sinTheta = paperWidthPx / originalWidth.toFloat()
-        val cosTheta = a / originalWidth.toFloat()
+        val cosTheta = leadInHeightPx / originalWidth.toFloat()
 
-        val stripHeightPx = max((a + originalHeight.toFloat() / sinTheta).roundToInt(), 1)
+        val stripHeightPx = max((leadInHeightPx + originalHeight.toFloat() / sinTheta).roundToInt(), 1)
 
         val imageAspect = originalHeight.toFloat() / originalWidth.toFloat()
         val turnsX = imageAspect * (cosTheta / sinTheta)
@@ -63,7 +63,7 @@ object SpiralBannerEngine {
 
         return SpiralGeometry(
             paperWidthPx = paperWidthPx,
-            a = a,
+            leadInHeightPx = leadInHeightPx,
             stripHeightPx = stripHeightPx,
             sinTheta = sinTheta,
             cosTheta = cosTheta,
@@ -106,9 +106,9 @@ object SpiralBannerEngine {
 
         val bannerPath = android.graphics.Path().apply {
             moveTo(stripWidth.toFloat(), 0f)
-            lineTo(0f, geometry.a)
+            lineTo(0f, geometry.leadInHeightPx)
             lineTo(0f, stripHeight.toFloat())
-            lineTo(stripWidth.toFloat(), stripHeight.toFloat() - geometry.a)
+            lineTo(stripWidth.toFloat(), stripHeight.toFloat() - geometry.leadInHeightPx)
             close()
         }
 

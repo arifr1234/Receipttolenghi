@@ -127,15 +127,6 @@ float2 mapCylinderToNormalizedStrip(float2 cylinderUv) {
     return normalizedStripUv;
 }
 
-half4 sampleDitheredStrip(float2 normalizedStripUv) {
-    float2 continuousPixelCoord = normalizedStripUv * uStripSize;
-
-    // quantizedPixelCoord: [0.5, uStripSize.x - 0.5] x [0.5, uStripSize.y - 0.5] - Clamped half-integer pixel center for nearest-neighbor point sampling
-    float2 quantizedPixelCoord = clamp(floor(continuousPixelCoord) + 0.5, float2(0.5), uStripSize - 0.5);
-
-    return uStrip.eval(quantizedPixelCoord);
-}
-
 half4 main(float2 fragCoord) {
     float2 cylinderUv;
     float surfaceLighting;
@@ -147,7 +138,7 @@ half4 main(float2 fragCoord) {
     // normalizedStripUv: [0.0, 1.0) x [0.0, 1.0] - Normalized UV on flat paper strip (width [0..1), length [0..1])
     float2 normalizedStripUv = mapCylinderToNormalizedStrip(cylinderUv);
 
-    half4 ditherColor = sampleDitheredStrip(normalizedStripUv);
+    half4 ditherColor = uStrip.eval(normalizedStripUv * uStripSize);
     return half4(ditherColor.rgb * half(surfaceLighting), 1.0);
 }
 """

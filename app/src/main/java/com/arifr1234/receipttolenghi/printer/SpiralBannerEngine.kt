@@ -168,12 +168,12 @@ object SpiralBannerEngine {
     }
 
     /**
-     * Prepares a slot bitmap for fractional pole coverage.
+     * Prepares a tile bitmap for fractional pole coverage.
      * When coverageFraction < 1.0, the source image is padded with white columns
      * so it occupies the requested fraction of the pole turn.
      * Phase offset is handled directly by shaderMatrix in unwrapToStrip.
      */
-    fun prepareSlotBitmap(
+    fun prepareTileBitmap(
         sourceBitmap: Bitmap,
         coverageFraction: Float,
         maxDimension: Int = 1000
@@ -185,12 +185,12 @@ object SpiralBannerEngine {
 
         val maxImgW = (maxDimension * clampedCoverage).roundToInt().coerceAtLeast(10)
         val baseBitmap = prepareSourceBitmap(sourceBitmap, maxImgW)
-        val slotW = max((baseBitmap.width / clampedCoverage).roundToInt(), baseBitmap.width + 1)
-        val slotBitmap = createBitmap(slotW, baseBitmap.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(slotBitmap)
+        val tileW = max((baseBitmap.width / clampedCoverage).roundToInt(), baseBitmap.width + 1)
+        val tileBitmap = createBitmap(tileW, baseBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(tileBitmap)
         canvas.drawColor(Color.WHITE)
         canvas.drawBitmap(baseBitmap, 0f, 0f, null)
-        return slotBitmap
+        return tileBitmap
     }
 
     /**

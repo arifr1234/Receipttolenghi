@@ -252,43 +252,43 @@ fun SpiralBannerScreen(
     }
 
     // Processing pipeline states
-    var slotBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var tileBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var unwrappedData by remember { mutableStateOf<SpiralBannerData?>(null) }
-    var previewData by remember { mutableStateOf<SpiralBannerData?>(null) }
+    var ditheredData by remember { mutableStateOf<SpiralBannerData?>(null) }
     var isUnwrapping by remember { mutableStateOf(false) }
     var isDithering by remember { mutableStateOf(false) }
     val isProcessing = isUnwrapping || isDithering
 
-    // Stage 1: Slot Bitmap (only re-renders when sourceBitmap or poleCoverageFraction changes)
+    // Stage 1: Tile Bitmap (only re-renders when sourceBitmap or poleCoverageFraction changes)
     LaunchedEffect(sourceBitmap, poleCoverageFraction) {
         val bmp = sourceBitmap ?: run {
-            slotBitmap = null
-            previewData = null
+            tileBitmap = null
+            ditheredData = null
             return@LaunchedEffect
         }
-        if (slotBitmap != null) {
+        if (tileBitmap != null) {
             delay(80.milliseconds)
         }
         withContext(Dispatchers.Default) {
-            slotBitmap = SpiralBannerEngine.prepareSlotBitmap(bmp, poleCoverageFraction)
+            tileBitmap = SpiralBannerEngine.prepareTileBitmap(bmp, poleCoverageFraction)
         }
     }
 
-    // Stage 2: Helical Geometry (instant math, only re-evaluates when slot dimensions, instances, or poleDiameterMm change)
-    val geometry = remember(slotBitmap, instances, poleDiameterMm) {
-        val slot = slotBitmap ?: return@remember null
+    // Stage 2: Helical Geometry (instant math, only re-evaluates when tile dimensions, instances, or poleDiameterMm change)
+    val geometry = remember(tileBitmap, instances, poleDiameterMm) {
+        val tile = tileBitmap ?: return@remember null
         SpiralBannerEngine.calculateGeometry(
-            originalWidth = slot.width * instances,
-            originalHeight = slot.height,
+            originalWidth = tile.width * instances,
+            originalHeight = tile.height,
             poleDiameterMm = poleDiameterMm
         )
     }
 
-    // Stage 3: Unwrapped Strip (only re-runs when slotBitmap, geometry, imagePhase, or instances change)
-    LaunchedEffect(slotBitmap, geometry, imagePhase, instances) {
-        val slot = slotBitmap
+    // Stage 3: Unwrapped Strip (only re-runs when tileBitmap, geometry, imagePhase, or instances change)
+    LaunchedEffect(tileBitmap, geometry, imagePhase, instances) {
+        val tile = tileBitmap
         val geo = geometry
-        if (slot == null || geo == null) {
+        if (tile == null || geo == null) {
             unwrappedData = null
             isUnwrapping = false
             return@LaunchedEffect
@@ -299,7 +299,7 @@ fun SpiralBannerScreen(
         }
         val currentPhase = imagePhase
         withContext(Dispatchers.Default) {
-            val unwrapped = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = currentPhase * instances)
+            val unwrapped = SpiralBannerEngine.unwrapToStrip(tile, geo, phase = currentPhase * instances)
             unwrappedData = SpiralBannerData(
                 strip = unwrapped,
                 geometry = geo,
@@ -318,13 +318,13 @@ fun SpiralBannerScreen(
     ) {
         val currentUnwrapped = unwrappedData ?: run {
             if (sourceBitmap == null) {
-                previewData = null
+                ditheredData = null
             }
             isDithering = false
             return@LaunchedEffect
         }
         isDithering = true
-        if (previewData != null) {
+        if (ditheredData != null) {
             delay(50.milliseconds)
         }
         withContext(Dispatchers.Default) {
@@ -335,7 +335,7 @@ fun SpiralBannerScreen(
                 brightnessCurve = brightnessCurve,
                 ditheringAlgorithm = ditheringAlgorithm
             )
-            previewData = SpiralBannerData(
+            ditheredData = SpiralBannerData(
                 strip = dithered,
                 geometry = currentUnwrapped.geometry,
                 phase = currentUnwrapped.phase
@@ -360,14 +360,14 @@ fun SpiralBannerScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val strip = previewData?.strip ?: return@IconButton
+                            val strip = ditheredData?.strip ?: return@IconButton
                             PrinterManager.printAsync { printer ->
                                 val bytes = EscPosPrinterCommands.bitmapToBytes(strip, false)
                                 val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
                                 printer.printFormattedText("[L]<img>$hexString</img>\n", 0f)
                             }
                         },
-                        enabled = previewData != null && !isProcessing
+                        enabled = ditheredData != null && !isProcessing
                     ) {
                         Icon(
                             imageVector = Icons.Default.Print,
@@ -428,10 +428,10 @@ fun SpiralBannerScreen(
                         .height(340.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        val currentPreview = previewData
-                        if (currentPreview != null) {
-                            val currentStrip = currentPreview.strip
-                            val currentGeometry = currentPreview.geometry
+                        val currentDithered = ditheredData
+                        if (currentDithered != null) {
+                            val currentStrip = currentDithered.strip
+                            val currentGeometry = currentDithered.geometry
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 val shaderRenderer = remember { CylinderShaderRenderer() }
                                 androidx.compose.foundation.Canvas(
@@ -458,7 +458,7 @@ fun SpiralBannerScreen(
                                     }
 
                                     drawIntoCanvas { canvas ->
-                                        val effectiveRotation = rotationAngle - (currentPreview.phase * (2.0f * PI.toFloat()))
+                                        val effectiveRotation = rotationAngle - (currentDithered.phase * (2.0f * PI.toFloat()))
                                         shaderRenderer.render(
                                             canvas = canvas.nativeCanvas,
                                             ditheredBitmap = currentStrip,

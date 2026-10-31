@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,6 +33,8 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
@@ -39,11 +44,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +67,8 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.arifr1234.receipttolenghi.printer.DitheringAlgorithm
 import com.arifr1234.receipttolenghi.printer.PrinterManager
@@ -222,8 +231,12 @@ fun SpiralBannerScreen(
 ) {
     val context = LocalContext.current
     var sourceBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var poleDiameterMm by remember { mutableFloatStateOf(35f) }
+    var poleDiameterMm by remember { mutableFloatStateOf(SpiralBannerEngine.DEFAULT_POLE_DIAMETER_MM) }
     var rotationAngle by remember { mutableFloatStateOf(0f) }
+
+    // Dialog states
+    var showPoleDiameterInfo by remember { mutableStateOf(false) }
+    var showPoleDiameterEditDialog by remember { mutableStateOf(false) }
 
     // Configuration states
     var selectedCategory by remember { mutableStateOf(BannerConfigCategory.BASIC) }
@@ -337,6 +350,32 @@ fun SpiralBannerScreen(
             )
             isDithering = false
         }
+    }
+
+    if (showPoleDiameterInfo) {
+        AlertDialog(
+            onDismissRequest = { showPoleDiameterInfo = false },
+            confirmButton = {
+                TextButton(onClick = { showPoleDiameterInfo = false }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Pole Diameter") },
+            text = { Text("Traffic sign poles are usually 88.9 mm in diameter.") }
+        )
+    }
+
+    if (showPoleDiameterEditDialog) {
+        PoleDiameterEditDialog(
+            initialValue = poleDiameterMm,
+            minDiameter = minDiameter,
+            maxDiameter = SpiralBannerEngine.MAX_POLE_DIAMETER_MM,
+            onDismiss = { showPoleDiameterEditDialog = false },
+            onConfirm = {
+                poleDiameterMm = it
+                showPoleDiameterEditDialog = false
+            }
+        )
     }
 
     Scaffold(
@@ -541,23 +580,48 @@ fun SpiralBannerScreen(
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
                                             horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "Pole Diameter",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                )
+                                                IconButton(
+                                                    onClick = { showPoleDiameterInfo = true },
+                                                    modifier = Modifier.size(24.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Info,
+                                                        contentDescription = "Pole Diameter Info",
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
+                                            val formattedDiameter = if (poleDiameterMm % 1f == 0f) {
+                                                "${poleDiameterMm.roundToInt()} mm"
+                                            } else {
+                                                "${String.format(Locale.US, "%.1f", poleDiameterMm)} mm"
+                                            }
                                             Text(
-                                                text = "Pole Diameter",
-                                                style = MaterialTheme.typography.titleMedium,
-                                            )
-                                            Text(
-                                                text = "${poleDiameterMm.roundToInt()} mm",
+                                                text = formattedDiameter,
                                                 style = MaterialTheme.typography.titleMedium,
                                                 color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier
+                                                    .clickable { showPoleDiameterEditDialog = true }
+                                                    .padding(vertical = 4.dp)
                                             )
                                         }
 
                                         Slider(
-                                            value = poleDiameterMm,
-                                            onValueChange = { poleDiameterMm = it },
-                                            valueRange = minDiameter..80f,
-                                            steps = (80 - minDiameter.roundToInt() - 1).coerceAtLeast(0),
+                                            value = poleDiameterMm.coerceIn(minDiameter, SpiralBannerEngine.MAX_POLE_DIAMETER_MM),
+                                            onValueChange = { poleDiameterMm = it.roundToInt().toFloat() },
+                                            valueRange = minDiameter..SpiralBannerEngine.MAX_POLE_DIAMETER_MM,
+                                            steps = (SpiralBannerEngine.MAX_POLE_DIAMETER_MM.roundToInt() - minDiameter.roundToInt() - 1).coerceAtLeast(0),
                                         )
                                     }
 
@@ -730,3 +794,72 @@ private fun PrintDiameterTapeButton(
         Text("Print Diameter Measuring Tape")
     }
 }
+
+@Composable
+private fun PoleDiameterEditDialog(
+    initialValue: Float,
+    minDiameter: Float,
+    maxDiameter: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit,
+) {
+    var text by remember {
+        mutableStateOf(
+            if (initialValue % 1f == 0f) "${initialValue.roundToInt()}" else String.format(Locale.US, "%.1f", initialValue)
+        )
+    }
+    val parsed = text.toFloatOrNull()
+    val isValid = parsed != null && parsed in minDiameter..maxDiameter
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Set Pole Diameter") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Enter diameter in mm (${minDiameter.roundToInt()}–${maxDiameter.roundToInt()} mm):",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (parsed != null && isValid) {
+                                onConfirm(parsed)
+                            }
+                        }
+                    ),
+                    suffix = { Text("mm") },
+                    isError = text.isNotEmpty() && !isValid,
+                    supportingText = if (text.isNotEmpty() && !isValid) {
+                        { Text("Must be between ${minDiameter.roundToInt()} and ${maxDiameter.roundToInt()} mm") }
+                    } else null
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (parsed != null && isValid) {
+                        onConfirm(parsed)
+                    }
+                },
+                enabled = isValid
+            ) {
+                Text("Set")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+

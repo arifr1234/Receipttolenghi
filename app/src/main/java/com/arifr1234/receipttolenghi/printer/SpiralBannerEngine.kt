@@ -33,6 +33,8 @@ data class SpiralGeometry(
 object SpiralBannerEngine {
 
     const val MIN_POLE_DIAMETER_RATIO = 1.05f
+    const val MAX_POLE_DIAMETER_MM = 100f
+    const val DEFAULT_POLE_DIAMETER_MM = 88.9f
 
     fun getMinimumPoleDiameterMm(paperWidthMm: Float = PrinterManager.PAPER_WIDTH_MM): Float {
         return ((paperWidthMm / PI.toFloat()) * MIN_POLE_DIAMETER_RATIO)
@@ -199,7 +201,7 @@ object SpiralBannerEngine {
      * Wrapping this tape around a cylindrical pole allows direct reading of diameter.
      */
     fun generateDiameterTape(
-        maxDiameterMm: Int = 80,
+        maxDiameterMm: Int = MAX_POLE_DIAMETER_MM.roundToInt(),
         printerWidthPx: Int = PrinterManager.MAX_PRINTER_WIDTH_PX
     ): Bitmap {
         val width = max(printerWidthPx, 1)

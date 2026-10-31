@@ -19,23 +19,23 @@ import kotlin.time.Duration.Companion.milliseconds
 
 data class PlaylistUserMetadata(
     val name: String,
-    val description: String = ""
+    val description: String = "",
 )
 
 data class PlaylistSystemMetadata(
     val size: Int,
-    val lastModified: Long
+    val lastModified: Long,
 )
 
 data class PlaylistHeader(
     val id: String,
     val userMetadata: PlaylistUserMetadata,
-    val systemMetadata: PlaylistSystemMetadata
+    val systemMetadata: PlaylistSystemMetadata,
 ) : PrintableState
 
 data class PlaylistItem(
     val id: String = UUID.randomUUID().toString(),
-    val state: PrintableState
+    val state: PrintableState,
 )
 
 internal data class PlaylistItemRaw(val id: String, val type: PrintableType, val stateJson: String)
@@ -54,21 +54,21 @@ object PlaylistManager {
         
         indexState = ObservablePersistentState(
             JsonListDiskState(File(playlistsDir, "index.json"), PlaylistHeader::class.java),
-            0.milliseconds
+            0.milliseconds,
         ).apply { open() }
         
         // Ensure history playlist exists
-        if (indexState!!.get().none { it.id == HISTORY_PLAYLIST_ID }) {
+        if (indexState!!.get().none { (id) -> id == HISTORY_PLAYLIST_ID }) {
             createPlaylistInternal(
                 id = HISTORY_PLAYLIST_ID,
-                userMetadata = PlaylistUserMetadata("History", "Automatically saved printed items")
+                userMetadata = PlaylistUserMetadata("History", "Automatically saved printed items"),
             )
         }
     }
 
     fun writePlaylistHeader(header: PlaylistHeader) {
         val index = indexState?.get() ?: emptyList()
-        if (index.none { it.id == header.id }) {
+        if (index.none { (id) -> id == header.id }) {
             indexState?.set { it + header }
         } else {
             indexState?.set { list -> 
@@ -78,7 +78,7 @@ object PlaylistManager {
     }
 
     fun getPlaylistHeader(id: String): PlaylistHeader {
-        return indexState?.get()?.find { it.id == id } 
+        return indexState?.get()?.find { (headerId) -> headerId == id } 
             ?: throw IllegalArgumentException("Playlist with id $id not found in index")
     }
 
@@ -92,7 +92,7 @@ object PlaylistManager {
         val header = PlaylistHeader(
             id = id,
             userMetadata = userMetadata,
-            systemMetadata = PlaylistSystemMetadata(0, System.currentTimeMillis())
+            systemMetadata = PlaylistSystemMetadata(0, System.currentTimeMillis()),
         )
         indexState?.set { listOf(header) + it }
         DiskPlaylist(id).set(emptyList())
@@ -106,7 +106,7 @@ object PlaylistManager {
 
     fun deletePlaylist(id: String) {
         if (id == HISTORY_PLAYLIST_ID) throw IllegalArgumentException("Cannot delete the history playlist")
-        indexState?.set { list -> list.filter { it.id != id } }
+        indexState?.set { list -> list.filter { (headerId) -> headerId != id } }
         getPlaylistFile(id).delete()
     }
 
@@ -115,18 +115,18 @@ object PlaylistManager {
     }
 
     fun getLastModifiedPlaylistId(): String? {
-        val available = playlists.value.filter { it.id != HISTORY_PLAYLIST_ID }
-        return available.maxByOrNull { it.systemMetadata.lastModified }?.id
+        val available = playlists.value.filter { (id) -> id != HISTORY_PLAYLIST_ID }
+        return available.maxByOrNull { (_, _, systemMetadata) -> systemMetadata.lastModified }?.id
     }
 
     class DiskPlaylist(private val id: String) : IPersistentState<List<PlaylistItem>> {
         private val rawState = JsonListDiskState(getPlaylistFile(id), PlaylistItemRaw::class.java)
 
         override fun get(): List<PlaylistItem> {
-            return rawState.get().map { raw ->
+            return rawState.get().map { (rawId, type, stateJson) ->
                 PlaylistItem(
-                    id = raw.id,
-                    state = gson.fromJson(raw.stateJson, raw.type.definition.stateClass.java)
+                    id = rawId,
+                    state = gson.fromJson(stateJson, type.definition.stateClass.java),
                 )
             }
         }
@@ -136,17 +136,17 @@ object PlaylistManager {
             val currentHeader = getPlaylistHeader(id)
             val updatedSystemMetadata = PlaylistSystemMetadata(
                 size = value.size,
-                lastModified = System.currentTimeMillis()
+                lastModified = System.currentTimeMillis(),
             )
             val updatedHeader = currentHeader.copy(systemMetadata = updatedSystemMetadata)
             indexState?.set { list -> list.map { if (it.id == id) updatedHeader else it } }
             
             // Serialize and save to disk
-            val rawItems = value.map { item ->
+            val rawItems = value.map { (itemId, state) ->
                 PlaylistItemRaw(
-                    id = item.id,
-                    type = PrintableRegistry.getTypeFor(item.state),
-                    stateJson = gson.toJson(item.state)
+                    id = itemId,
+                    type = PrintableRegistry.getTypeFor(state),
+                    stateJson = gson.toJson(state),
                 )
             }
             rawState.set(rawItems)
@@ -165,7 +165,7 @@ interface IPersistentState<T> {
 
 class JsonListDiskState<T>(
     private val file: File,
-    elementClass: Class<T>
+    elementClass: Class<T>,
 ) : IPersistentState<List<T>> {
     private val gson = Gson()
     private val listType = com.google.gson.reflect.TypeToken.getParameterized(List::class.java, elementClass).type
@@ -182,7 +182,7 @@ class JsonListDiskState<T>(
 
 class ObservablePersistentState<T>(
     private val disk: IPersistentState<T>,
-    private val debounceDuration: Duration = 500.milliseconds
+    private val debounceDuration: Duration = 500.milliseconds,
 ) : IPersistentState<T> {
     
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -226,7 +226,7 @@ class ObservablePersistentState<T>(
 @Composable
 fun <T> rememberObservablePersistentState(
     persistentState: IPersistentState<T>,
-    debounceDuration: Duration = 500.milliseconds
+    debounceDuration: Duration = 500.milliseconds,
 ): ObservablePersistentState<T> {
     val editor = remember(persistentState) {
         ObservablePersistentState(persistentState, debounceDuration).apply { open() }

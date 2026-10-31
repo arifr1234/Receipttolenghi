@@ -14,7 +14,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dantsu.escposprinter.EscPosPrinter
-import java.util.UUID
 
 enum class SpacerStyle(val char: String?) {
     NONE(null),
@@ -24,12 +23,12 @@ enum class SpacerStyle(val char: String?) {
     TILDE("~"),
     UNDERSCORE("_"),
     DOT("."),
-    HASH("#")
+    HASH("#"),
 }
 
 data class SpacerState(
     val style: SpacerStyle = SpacerStyle.DASH,
-    val lines: Int = 1
+    val lines: Int = 1,
 ) : PrintableState
 
 object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
@@ -44,7 +43,7 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
             Text("Border Style", style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(8.dp))
             
-            var expanded by remember { mutableStateOf(false) }
+            var expanded by remember { mutableStateOf(value = false) }
             
             Box {
                 val currentStyle = state.style
@@ -62,7 +61,7 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
                             onClick = { 
                                 onStateChange(state.copy(style = style))
                                 expanded = false
-                            }
+                            },
                         )
                     }
                 }
@@ -78,10 +77,10 @@ object SpacerPrintableDefinition : PrintableDefinition<SpacerState> {
                 }
                 
                 Text(
-                    text = "${state.lines}", 
+                    text = state.lines.toString(), 
                     style = MaterialTheme.typography.bodyLarge, 
                     modifier = Modifier.width(32.dp), 
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
                 
                 IconButton(onClick = { if (state.lines < 10) onStateChange(state.copy(lines = state.lines + 1)) }) {

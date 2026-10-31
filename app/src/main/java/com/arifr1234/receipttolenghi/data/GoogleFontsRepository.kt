@@ -29,8 +29,9 @@ object GoogleFontsRepository {
             val responseText = connection.inputStream.bufferedReader().use { it.readText() }
             
             val response = gson.fromJson(responseText, GoogleFontsResponse::class.java)
-            if (response?.items != null) {
-                val nonColorFonts = response.items.filterNot { it.isColorFont }
+            if (response != null) {
+                val (_, items) = response
+                val nonColorFonts = items.filterNot { it.isColorFont }
                 cachedFonts = nonColorFonts
                 return@withContext nonColorFonts
             } else {
@@ -44,12 +45,12 @@ object GoogleFontsRepository {
     suspend fun getSubsetsSortedByPopularity(): List<String> = withContext(Dispatchers.Default) {
         val fonts = getFonts()
         val counts = mutableMapOf<String, Int>()
-        for (font in fonts) {
-            for (subset in font.subsets) {
+        for ((_, _, subsets) in fonts) {
+            for (subset in subsets) {
                 counts[subset] = (counts[subset] ?: 0) + 1
             }
         }
-        return@withContext counts.entries.sortedByDescending { it.value }.map { it.key }
+        return@withContext counts.entries.asSequence().sortedByDescending { (_, value) -> value }.map { (key) -> key }.toList()
     }
     suspend fun getTagsByCategory(): Map<String, List<String>> = withContext(Dispatchers.Default) {
         val fonts = getFonts()
@@ -66,6 +67,6 @@ object GoogleFontsRepository {
             }
         }
         
-        return@withContext categoryToTags.mapValues { it.value.sorted() }
+        return@withContext categoryToTags.mapValues { (_, tags) -> tags.sorted() }
     }
 }

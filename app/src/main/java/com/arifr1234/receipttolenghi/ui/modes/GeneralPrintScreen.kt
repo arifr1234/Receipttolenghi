@@ -41,7 +41,7 @@ sealed interface GeneralPrintPage {
 @Composable
 fun GeneralPrintScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var currentPage by remember { mutableStateOf<GeneralPrintPage>(GeneralPrintPage.Main) }
     
@@ -67,7 +67,7 @@ fun GeneralPrintScreen(
                     message = "Added to $playlistName",
                     actionLabel = "Change",
                     withDismissAction = true,
-                    duration = SnackbarDuration.Short
+                    duration = SnackbarDuration.Short,
                 )
                 if (result == SnackbarResult.ActionPerformed) {
                     changePlaylistContext = Pair(playlistItem, defaultId)
@@ -83,12 +83,12 @@ fun GeneralPrintScreen(
             showRemoveOption = oldPlaylistId != null,
             onPlaylistSelected = { playlist ->
                 // Remove from old
-                if (oldPlaylistId != null) {
-                    PlaylistManager.DiskPlaylist(oldPlaylistId).set { it.filter { i -> i.id != itemToMove.id } }
+                oldPlaylistId?.let { id ->
+                    PlaylistManager.DiskPlaylist(id).set { playlistItems -> playlistItems.filter { (itemId) -> itemId != itemToMove.id } }
                 }
                 // Add to new
-                if (playlist != null) {
-                    PlaylistManager.DiskPlaylist(playlist.id).set { it + itemToMove }
+                playlist?.id?.let { id ->
+                    PlaylistManager.DiskPlaylist(id).set { playlistItems -> playlistItems + itemToMove }
                 }
                 
                 changePlaylistContext = null
@@ -96,26 +96,26 @@ fun GeneralPrintScreen(
                     snackbarHostState.currentSnackbarData?.dismiss()
                     val message = if (playlist != null) {
                         "Added to ${playlist.userMetadata.name}"
-                    } else if (oldPlaylistId != null) {
-                        val oldName = PlaylistManager.getPlaylistHeader(oldPlaylistId).userMetadata.name
+                    } else oldPlaylistId?.let { id ->
+                        val oldName = PlaylistManager.getPlaylistHeader(id).userMetadata.name
                         "Removed from $oldName"
-                    } else null
+                    }
 
-                    if (message != null) {
+                    message?.let { msg ->
                         snackbarHostState.showSnackbar(
-                            message = message,
+                            message = msg,
                             withDismissAction = true,
-                            duration = SnackbarDuration.Short
+                            duration = SnackbarDuration.Short,
                         )
                     }
                 }
-            }
+            },
         )
     }
 
     Scaffold(
         modifier = modifier.fillMaxSize().imePadding(),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { innerPadding ->
         val playlistNavigation = remember {
             object : PlaylistNavigation {
@@ -127,27 +127,27 @@ fun GeneralPrintScreen(
         
         CompositionLocalProvider(
             LocalAddToPlaylist provides handleAddToPlaylist,
-            LocalPlaylistNavigation provides playlistNavigation
+            LocalPlaylistNavigation provides playlistNavigation,
         ) {
             when (val page = currentPage) {
                 is GeneralPrintPage.Main -> {
                     GeneralPrintMain(
                         onNavigateBack = onNavigateBack,
                         onNavigateToPlaylists = { currentPage = GeneralPrintPage.Playlists },
-                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
                     )
                 }
                 is GeneralPrintPage.Playlists -> {
                     PlaylistsScreen(
                         onNavigateBack = { currentPage = GeneralPrintPage.Main },
-                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
                     )
                 }
                 is GeneralPrintPage.PlaylistViewer -> {
                     PlaylistViewerScreen(
                         playlistId = page.id,
                         onNavigateBack = { currentPage = GeneralPrintPage.Playlists },
-                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)
+                        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
                     )
                 }
             }
@@ -159,7 +159,7 @@ fun GeneralPrintScreen(
 fun GeneralPrintMain(
     onNavigateBack: () -> Unit,
     onNavigateToPlaylists: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val historyDisk = remember { PlaylistManager.DiskPlaylist(PlaylistManager.HISTORY_PLAYLIST_ID) }
     val historyEditor = rememberObservablePersistentState(historyDisk)
@@ -168,14 +168,14 @@ fun GeneralPrintMain(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .imePadding()
+            .imePadding(),
     ) {
         // Compact Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onNavigateBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -183,7 +183,7 @@ fun GeneralPrintMain(
             Text(
                 text = "Workspace",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 8.dp),
             )
             Spacer(modifier = Modifier.weight(1f))
             if (history.isNotEmpty()) {
@@ -197,10 +197,10 @@ fun GeneralPrintMain(
         }
         
         Box(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         ) {
             Column(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             ) {
                 val listState = rememberLazyListState()
                 
@@ -215,17 +215,17 @@ fun GeneralPrintMain(
                     modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom),
-                    reverseLayout = true
+                    reverseLayout = true,
                 ) {
-                    items(history, key = { it.id }) { playlistItem ->
+                    items(history, key = { (id) -> id }) { (_, state) ->
                         PrintableCard(
                             modifier = Modifier.fillMaxWidth(),
-                            state = playlistItem.state,
-                            definition = PrintableRegistry.getTypedDefinitionFor(playlistItem.state),
+                            state = state,
+                            definition = PrintableRegistry.getTypedDefinitionFor(state),
                             isReadOnly = true,
                             onPrintSuccess = { item ->
                                 historyEditor.set { listOf(PlaylistItem(state = item)) + it }
-                            }
+                            },
                         )
                     }
                 }
@@ -234,10 +234,9 @@ fun GeneralPrintMain(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                    onPrintSuccess = { item ->
-                        historyEditor.set { listOf(PlaylistItem(state = item)) + it }
-                    }
-                )
+                ) { item ->
+                    historyEditor.set { listOf(PlaylistItem(state = item)) + it }
+                }
             }
         }
     }

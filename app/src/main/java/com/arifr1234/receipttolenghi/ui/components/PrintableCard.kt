@@ -48,13 +48,13 @@ fun <T : PrintableState> PrintableCard(
     clearAfterPrint: Boolean = false,
     isReadOnly: Boolean = false,
     isScrollable: Boolean = false,
-    onAddToPlaylist: ((T) -> Unit)? = if (state is PlaylistHeader) null else LocalAddToPlaylist.current as? ((T) -> Unit)
+    onAddToPlaylist: ((T) -> Unit)? = if (state is PlaylistHeader) null else LocalAddToPlaylist.current as? ((T) -> Unit),
 ) {
     val context = LocalContext.current
-    var isConfigExpanded by remember { mutableStateOf(false) }
+    var isConfigExpanded by remember { mutableStateOf(value = false) }
 
     Card(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
     ) {
         val scrollState = androidx.compose.foundation.rememberScrollState()
         val clipboard = LocalClipboard.current
@@ -62,7 +62,7 @@ fun <T : PrintableState> PrintableCard(
         Column(
             modifier = Modifier
                 .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 4.dp)
-                .let { if (isScrollable) it.verticalScroll(scrollState) else it }
+                .let { if (isScrollable) it.verticalScroll(scrollState) else it },
         ) {
             // The dynamic UI editor for this state
             ReadOnlyBox(isReadOnly = isReadOnly) {
@@ -73,7 +73,7 @@ fun <T : PrintableState> PrintableCard(
             
             Row(
                 horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 val clipboardText = definition.getClipboardText(state)
                 if (clipboardText != null) {
@@ -81,34 +81,33 @@ fun <T : PrintableState> PrintableCard(
                         modifier = Modifier.size(36.dp),
                         onClick = {
                             coroutineScope.launch {
-                                clipboard.setClipEntry(ClipEntry(
-                                    ClipData.newPlainText("text", clipboardText)
-                                ))
+                                val clipEntry = ClipEntry(ClipData.newPlainText("text", clipboardText))
+                                clipboard.setClipEntry(clipEntry)
                             }
-                        }
+                        },
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "Copy")
                     }
                 }
                 IconButton(
                     modifier = Modifier.size(36.dp),
-                    onClick = { isConfigExpanded = !isConfigExpanded }
+                    onClick = { isConfigExpanded = !isConfigExpanded },
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Configure",
-                        tint = if (isConfigExpanded) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                        tint = if (isConfigExpanded) MaterialTheme.colorScheme.primary else LocalContentColor.current,
                     )
                 }
                 if (onAddToPlaylist != null) {
                     IconButton(
                         modifier = Modifier.size(36.dp),
-                        onClick = { onAddToPlaylist(state) }
+                        onClick = { onAddToPlaylist(state) },
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add to playlist")
                     }
                 }
-                var isPrinting by remember { mutableStateOf(false) }
+                var isPrinting by remember { mutableStateOf(value = false) }
                 
                 Box(contentAlignment = Alignment.Center) {
                     IconButton(
@@ -126,14 +125,14 @@ fun <T : PrintableState> PrintableCard(
                                     isPrinting = false
                                 }
                             }
-                        }
+                        },
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Print")
                     }
                     
                     if (isPrinting) {
                         GlowingDot(
-                            modifier = Modifier.align(Alignment.TopEnd)
+                            modifier = Modifier.align(Alignment.TopEnd),
                         )
                     }
                 }
@@ -142,7 +141,7 @@ fun <T : PrintableState> PrintableCard(
             AnimatedVisibility(
                 visible = isConfigExpanded,
                 enter = expandVertically(),
-                exit = shrinkVertically()
+                exit = shrinkVertically(),
             ) {
                 Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     HorizontalDivider()

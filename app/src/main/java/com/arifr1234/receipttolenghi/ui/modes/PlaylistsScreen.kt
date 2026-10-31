@@ -37,9 +37,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun PlaylistsScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    var isManageMode by remember { mutableStateOf(false) }
+    var isManageMode by remember { mutableStateOf(value = false) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -59,21 +59,23 @@ fun PlaylistsScreen(
                     TextButton(onClick = { isManageMode = !isManageMode }) {
                         Text(if (isManageMode) "Done" else "Manage")
                     }
-                }
+                },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                PlaylistManager.createPlaylist(PlaylistUserMetadata("New Playlist"))
-                coroutineScope.launch { listState.animateScrollToItem(0) }
-            }) {
+            FloatingActionButton(
+                onClick = {
+                    PlaylistManager.createPlaylist(PlaylistUserMetadata("New Playlist"))
+                    coroutineScope.launch { listState.animateScrollToItem(0) }
+                },
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "New Playlist")
             }
-        }
+        },
     ) { innerPadding ->
         val playlistsRaw by PlaylistManager.playlists.collectAsState()
-        val playlists = playlistsRaw.filter { it.id != PlaylistManager.HISTORY_PLAYLIST_ID }
-        val items = remember(playlists) { playlists.map { PlaylistItem(id = it.id, state = it) } }
+        val playlists = playlistsRaw.filter { (id) -> id != PlaylistManager.HISTORY_PLAYLIST_ID }
+        val items = remember(playlists) { playlists.map { header -> PlaylistItem(id = header.id, state = header) } }
         
         if (items.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
@@ -85,11 +87,10 @@ fun PlaylistsScreen(
                 items = items,
                 listState = listState,
                 isManageMode = isManageMode,
-                onStateChange = { originalItem, updatedState ->
-                    val playlistId = (originalItem.state as PlaylistHeader).id
-                    PlaylistManager.updateUserMetadata(playlistId, (updatedState as PlaylistHeader).userMetadata)
+                onStateChange = { (originalId), updatedState ->
+                    PlaylistManager.updateUserMetadata(originalId, (updatedState as PlaylistHeader).userMetadata)
                 },
-                onDelete = { PlaylistManager.deletePlaylist((it.state as PlaylistHeader).id) }
+                onDelete = { (_, state) -> PlaylistManager.deletePlaylist((state as PlaylistHeader).id) },
             )
         }
     }

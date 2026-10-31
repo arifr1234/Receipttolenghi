@@ -22,7 +22,7 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
         return PlaylistHeader(
             id = UUID.randomUUID().toString(),
             userMetadata = PlaylistUserMetadata("New Playlist"),
-            systemMetadata = PlaylistSystemMetadata(0, System.currentTimeMillis())
+            systemMetadata = PlaylistSystemMetadata(0, System.currentTimeMillis()),
         )
     }
 
@@ -33,17 +33,17 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
                 Text(
                     text = state.userMetadata.name,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 if (state.userMetadata.description.isNotBlank()) {
                     Text(
                         text = state.userMetadata.description,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             }
@@ -51,7 +51,7 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
             IconButton(onClick = { navigation.openViewer(state.id) }) {
                 Icon(
                     Icons.Default.Edit,
-                    contentDescription = "Open Playlist"
+                    contentDescription = "Open Playlist",
                 )
             }
         }
@@ -68,7 +68,7 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
                     onStateChange(state.copy(userMetadata = state.userMetadata.copy(name = it)))
                 },
                 label = { Text("Playlist Name") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = state.userMetadata.description,
@@ -76,18 +76,18 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
                     onStateChange(state.copy(userMetadata = state.userMetadata.copy(description = it)))
                 },
                 label = { Text("Description") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             )
             
             Text(
                 text = "Items: ${state.systemMetadata.size}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = "Last Modified: ${dateFormat.format(Date(state.systemMetadata.lastModified))}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.height(4.dp))
         }
@@ -95,8 +95,8 @@ object PlaylistPrintableDefinition : PrintableDefinition<PlaylistHeader> {
 
     override fun print(context: Context, state: PlaylistHeader, printer: EscPosPrinter) {
         val items = PlaylistManager.DiskPlaylist(state.id).get()
-        items.forEach { item ->
-            PrintableRegistry.getTypedDefinitionFor(item.state).print(context, item.state, printer)
+        items.forEach { (_, itemState) ->
+            PrintableRegistry.getTypedDefinitionFor(itemState).print(context, itemState, printer)
         }
     }
 }

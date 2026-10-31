@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 fun GlowingDot(
     modifier: Modifier = Modifier,
     color: Color = Color.Green,
-    size: androidx.compose.ui.unit.Dp = 8.dp
+    size: androidx.compose.ui.unit.Dp = 8.dp,
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val alpha by infiniteTransition.animateFloat(
@@ -28,15 +28,15 @@ fun GlowingDot(
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(800),
-            repeatMode = RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse,
         ),
-        label = "alpha"
+        label = "alpha",
     )
     
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(color.copy(alpha = alpha))
+            .background(color.copy(alpha = alpha)),
     )
 }

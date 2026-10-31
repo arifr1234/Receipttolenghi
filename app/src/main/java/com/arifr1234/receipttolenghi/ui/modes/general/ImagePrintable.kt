@@ -3,11 +3,7 @@ package com.arifr1234.receipttolenghi.ui.modes.general
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.ImageDecoder
 import android.net.Uri
-import android.os.Build
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,7 +34,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.arifr1234.receipttolenghi.printer.DitheringAlgorithm
@@ -58,7 +52,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
-import kotlin.math.roundToInt
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
@@ -72,7 +65,7 @@ data class ImageState(
     val ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
     val size: ImageSize = ImageSize.FULL,
     val brightnessMultiplier: Float = 2.0f,
-    val brightnessCurve: BrightnessCurve = BrightnessCurve.CURVE
+    val brightnessCurve: BrightnessCurve = BrightnessCurve.CURVE,
 ) : PrintableState
 
 object ImagePrintableDefinition : PrintableDefinition<ImageState> {
@@ -116,13 +109,13 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         }
 
         val galleryLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
+            contract = ActivityResultContracts.GetContent(),
         ) { uri: Uri? ->
             uri?.let { saveBitmap(loadBitmapFromUri(context, it)) }
         }
 
         val cameraLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.TakePicturePreview()
+            contract = ActivityResultContracts.TakePicturePreview(),
         ) { bitmap: Bitmap? ->
             bitmap?.let { saveBitmap(it) }
         }
@@ -130,7 +123,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             val resolvedUri = getResolvedUri(context, state)
             
-            var previewDithered by remember { mutableStateOf(false) }
+            var previewDithered by remember { mutableStateOf(value = false) }
             var originalImage by remember { mutableStateOf<Bitmap?>(null) }
             var ditheredImage by remember { mutableStateOf<Bitmap?>(null) }
             var currentPainter by remember { mutableStateOf<Painter?>(null) }
@@ -153,7 +146,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 state.size,
                 state.ditheringAlgorithm,
                 state.brightnessMultiplier,
-                state.brightnessCurve
+                state.brightnessCurve,
             ) {
                 if (resolvedUri == null) {
                     ditheredImage = null
@@ -175,12 +168,12 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     model = displayBitmap ?: resolvedUri,
                     contentDescription = if (previewDithered) "Dithered Image Preview" else "Selected Image",
                     placeholder = currentPainter,
-                    onSuccess = { currentPainter = it.painter },
+                    onSuccess = { (painter) -> currentPainter = painter },
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = maxImageHeight),
                     contentScale = ContentScale.Fit,
-                    filterQuality = FilterQuality.None
+                    filterQuality = FilterQuality.None,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -190,30 +183,30 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                var showMenu by remember { mutableStateOf(false) }
+                var showMenu by remember { mutableStateOf(value = false) }
                 Box {
                     Button(onClick = { showMenu = true }) {
                         Text("Select Image")
                     }
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { showMenu = false },
                     ) {
                         DropdownMenuItem(
                             text = { Text("Gallery") },
                             onClick = {
                                 showMenu = false
                                 galleryLauncher.launch("image/*")
-                            }
+                            },
                         )
                         DropdownMenuItem(
                             text = { Text("Camera") },
                             onClick = {
                                 showMenu = false
                                 cameraLauncher.launch(null)
-                            }
+                            },
                         )
                     }
                 }
@@ -221,7 +214,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     FilterChip(
                         selected = previewDithered,
                         onClick = { previewDithered = !previewDithered },
-                        label = { Text("Preview") }
+                        label = { Text("Preview") },
                     )
                 }
             }
@@ -233,7 +226,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
         Column {
             DitheringAlgorithmSelector(
                 selectedAlgorithm = state.ditheringAlgorithm,
-                onAlgorithmSelected = { onStateChange(state.copy(ditheringAlgorithm = it)) }
+                onAlgorithmSelected = { onStateChange(state.copy(ditheringAlgorithm = it)) },
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -242,7 +235,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                 brightnessMultiplier = state.brightnessMultiplier,
                 onMultiplierChange = { onStateChange(state.copy(brightnessMultiplier = it)) },
                 brightnessCurve = state.brightnessCurve,
-                onCurveChange = { onStateChange(state.copy(brightnessCurve = it)) }
+                onCurveChange = { onStateChange(state.copy(brightnessCurve = it)) },
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -253,7 +246,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     FilterChip(
                         selected = state.size == imageSize,
                         onClick = { onStateChange(state.copy(size = imageSize)) },
-                        label = { Text(imageSize.label) }
+                        label = { Text(imageSize.label) },
                     )
                 }
             }
@@ -266,7 +259,7 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
                     FilterChip(
                         selected = state.align == alignment,
                         onClick = { onStateChange(state.copy(align = alignment)) },
-                        label = { Text(alignment.label) }
+                        label = { Text(alignment.label) },
                     )
                 }
             }

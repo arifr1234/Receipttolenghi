@@ -1,16 +1,13 @@
 package com.arifr1234.receipttolenghi.ui.modes
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
 import android.graphics.Canvas
-import android.graphics.ImageDecoder
 import android.graphics.Paint
 import android.graphics.RuntimeShader
 import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -30,7 +27,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddPhotoAlternate
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Straighten
@@ -196,7 +192,7 @@ private class CylinderShaderRenderer {
         canvasHeight: Float,
         cylWidth: Float,
         cylHeight: Float,
-        rotation: Float
+        rotation: Float,
     ) {
         val bitmapShader = BitmapShader(ditheredBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         shader.setInputShader("uStrip", bitmapShader)
@@ -215,14 +211,14 @@ private class CylinderShaderRenderer {
 private data class SpiralBannerData(
     val strip: Bitmap,
     val geometry: SpiralGeometry,
-    val phase: Float
+    val phase: Float,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpiralBannerScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     var sourceBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -243,7 +239,7 @@ fun SpiralBannerScreen(
     }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.GetContent(),
     ) { uri: Uri? ->
         if (uri != null) {
             val loadedBitmap = ImageUtils.loadBitmapFromUri(context, uri)
@@ -255,8 +251,8 @@ fun SpiralBannerScreen(
     var tileBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var unwrappedData by remember { mutableStateOf<SpiralBannerData?>(null) }
     var ditheredData by remember { mutableStateOf<SpiralBannerData?>(null) }
-    var isUnwrapping by remember { mutableStateOf(false) }
-    var isDithering by remember { mutableStateOf(false) }
+    var isUnwrapping by remember { mutableStateOf(value = false) }
+    var isDithering by remember { mutableStateOf(value = false) }
     val isProcessing = isUnwrapping || isDithering
 
     // Stage 1: Tile Bitmap (only re-renders when sourceBitmap or poleCoverageFraction changes)
@@ -280,15 +276,14 @@ fun SpiralBannerScreen(
         SpiralBannerEngine.calculateGeometry(
             originalWidth = tile.width * instances,
             originalHeight = tile.height,
-            poleDiameterMm = poleDiameterMm
+            poleDiameterMm = poleDiameterMm,
         )
     }
 
     // Stage 3: Unwrapped Strip (only re-runs when tileBitmap, geometry, imagePhase, or instances change)
     LaunchedEffect(tileBitmap, geometry, imagePhase, instances) {
         val tile = tileBitmap
-        val geo = geometry
-        if (tile == null || geo == null) {
+        if ((tile == null) || (geometry == null)) {
             unwrappedData = null
             isUnwrapping = false
             return@LaunchedEffect
@@ -299,11 +294,11 @@ fun SpiralBannerScreen(
         }
         val currentPhase = imagePhase
         withContext(Dispatchers.Default) {
-            val unwrapped = SpiralBannerEngine.unwrapToStrip(tile, geo, phase = currentPhase * instances)
+            val unwrapped = SpiralBannerEngine.unwrapToStrip(tile, geometry, phase = currentPhase * instances)
             unwrappedData = SpiralBannerData(
                 strip = unwrapped,
-                geometry = geo,
-                phase = currentPhase
+                geometry = geometry,
+                phase = currentPhase,
             )
             isUnwrapping = false
         }
@@ -314,9 +309,9 @@ fun SpiralBannerScreen(
         unwrappedData,
         brightnessMultiplier,
         brightnessCurve,
-        ditheringAlgorithm
+        ditheringAlgorithm,
     ) {
-        val currentUnwrapped = unwrappedData ?: run {
+        val (currentStrip, currentGeometry, currentPhase) = unwrappedData ?: run {
             if (sourceBitmap == null) {
                 ditheredData = null
             }
@@ -329,16 +324,16 @@ fun SpiralBannerScreen(
         }
         withContext(Dispatchers.Default) {
             val dithered = SpiralBannerEngine.processForPrinter(
-                unwrappedStrip = currentUnwrapped.strip,
-                geometry = currentUnwrapped.geometry,
+                unwrappedStrip = currentStrip,
+                geometry = currentGeometry,
                 brightnessMultiplier = brightnessMultiplier,
                 brightnessCurve = brightnessCurve,
-                ditheringAlgorithm = ditheringAlgorithm
+                ditheringAlgorithm = ditheringAlgorithm,
             )
             ditheredData = SpiralBannerData(
                 strip = dithered,
-                geometry = currentUnwrapped.geometry,
-                phase = currentUnwrapped.phase
+                geometry = currentGeometry,
+                phase = currentPhase,
             )
             isDithering = false
         }
@@ -353,7 +348,7 @@ fun SpiralBannerScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
                         )
                     }
                 },
@@ -367,16 +362,16 @@ fun SpiralBannerScreen(
                                 printer.printFormattedText("[L]<img>$hexString</img>\n", 0f)
                             }
                         },
-                        enabled = ditheredData != null && !isProcessing
+                        enabled = (ditheredData != null) && !isProcessing,
                     ) {
                         Icon(
                             imageVector = Icons.Default.Print,
-                            contentDescription = "Print Spiral Banner"
+                            contentDescription = "Print Spiral Banner",
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -384,36 +379,36 @@ fun SpiralBannerScreen(
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (sourceBitmap == null) {
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.AddPhotoAlternate,
                             contentDescription = null,
                             modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                         Text(
                             text = "Create a Spiral Banner",
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
                             text = "Transform an image into a continuous helical strip of thermal paper. When wound edge-to-edge around a cylinder, the original image is revealed!",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Button(
-                            onClick = { imagePickerLauncher.launch("image/*") }
+                            onClick = { imagePickerLauncher.launch("image/*") },
                         ) {
                             Text("Select Image")
                         }
@@ -425,7 +420,7 @@ fun SpiralBannerScreen(
                 ElevatedCard(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(340.dp)
+                        .height(340.dp),
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         val currentDithered = ditheredData
@@ -441,7 +436,7 @@ fun SpiralBannerScreen(
                                             detectHorizontalDragGestures { _, dragAmount ->
                                                 rotationAngle += dragAmount * 0.012f
                                             }
-                                        }
+                                        },
                                 ) {
                                     val maxAllowedWidth = size.width * 0.9f
                                     val idealWidth = size.height * currentGeometry.cylinderAspectRatio
@@ -467,7 +462,7 @@ fun SpiralBannerScreen(
                                             canvasHeight = size.height,
                                             cylWidth = cylW,
                                             cylHeight = cylH,
-                                            rotation = effectiveRotation
+                                            rotation = effectiveRotation,
                                         )
                                     }
                                 }
@@ -475,12 +470,12 @@ fun SpiralBannerScreen(
                                 // Fallback for API < 33
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
                                         text = "3D cylinder shader requires Android 13+",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -490,7 +485,7 @@ fun SpiralBannerScreen(
                             CircularProgressIndicator(
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .align(Alignment.Center)
+                                    .align(Alignment.Center),
                             )
                         }
                     }
@@ -498,25 +493,25 @@ fun SpiralBannerScreen(
 
                 // Categorized Controls Card
                 ElevatedCard(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         PrimaryTabRow(
                             selectedTabIndex = selectedCategory.ordinal,
                             modifier = Modifier.fillMaxWidth(),
                             containerColor = Color.Transparent,
-                            divider = {}
+                            divider = {},
                         ) {
                             BannerConfigCategory.entries.forEach { category ->
                                 Tab(
                                     selected = selectedCategory == category,
                                     onClick = { selectedCategory = category },
-                                    text = { Text(category.label) }
+                                    text = { Text(category.label) },
                                 )
                             }
                         }
@@ -526,15 +521,15 @@ fun SpiralBannerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
+                                        horizontalArrangement = Arrangement.End,
                                     ) {
                                         OutlinedButton(
-                                            onClick = { imagePickerLauncher.launch("image/*") }
+                                            onClick = { imagePickerLauncher.launch("image/*") },
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.Refresh,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(16.dp)
+                                                modifier = Modifier.size(16.dp),
                                             )
                                             Spacer(modifier = Modifier.size(6.dp))
                                             Text("Change Image")
@@ -545,16 +540,16 @@ fun SpiralBannerScreen(
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                            horizontalArrangement = Arrangement.SpaceBetween,
                                         ) {
                                             Text(
                                                 text = "Pole Diameter",
-                                                style = MaterialTheme.typography.titleMedium
+                                                style = MaterialTheme.typography.titleMedium,
                                             )
                                             Text(
                                                 text = "${poleDiameterMm.roundToInt()} mm",
                                                 style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.primary,
                                             )
                                         }
 
@@ -562,7 +557,7 @@ fun SpiralBannerScreen(
                                             value = poleDiameterMm,
                                             onValueChange = { poleDiameterMm = it },
                                             valueRange = minDiameter..80f,
-                                            steps = (80 - minDiameter.roundToInt() - 1).coerceAtLeast(0)
+                                            steps = (80 - minDiameter.roundToInt() - 1).coerceAtLeast(0),
                                         )
                                     }
 
@@ -575,14 +570,14 @@ fun SpiralBannerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                     DitheringAlgorithmSelector(
                                         selectedAlgorithm = ditheringAlgorithm,
-                                        onAlgorithmSelected = { ditheringAlgorithm = it }
+                                        onAlgorithmSelected = { ditheringAlgorithm = it },
                                     )
 
                                     BrightnessCompensationSelector(
                                         brightnessMultiplier = brightnessMultiplier,
                                         onMultiplierChange = { brightnessMultiplier = it },
                                         brightnessCurve = brightnessCurve,
-                                        onCurveChange = { brightnessCurve = it }
+                                        onCurveChange = { brightnessCurve = it },
                                     )
                                 }
                             }
@@ -592,23 +587,23 @@ fun SpiralBannerScreen(
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                            horizontalArrangement = Arrangement.SpaceBetween,
                                         ) {
                                             Text(
                                                 text = "Pole Coverage",
-                                                style = MaterialTheme.typography.titleMedium
+                                                style = MaterialTheme.typography.titleMedium,
                                             )
                                             Text(
                                                 text = "${(poleCoverageFraction * 100).roundToInt()}%",
                                                 style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.primary,
                                             )
                                         }
                                         Slider(
                                             value = poleCoverageFraction,
                                             onValueChange = { poleCoverageFraction = (it * 10f).roundToInt() / 10f },
                                             valueRange = 0.1f..1.0f,
-                                            steps = 8
+                                            steps = 8,
                                         )
                                         Text(
                                             text = if (poleCoverageFraction >= 0.99f) {
@@ -617,7 +612,7 @@ fun SpiralBannerScreen(
                                                 "Image covers ${(poleCoverageFraction * 100).roundToInt()}% of the circumference."
                                             },
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
 
@@ -625,50 +620,50 @@ fun SpiralBannerScreen(
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                            horizontalArrangement = Arrangement.SpaceBetween,
                                         ) {
                                             Text(
                                                 text = "Phase",
-                                                style = MaterialTheme.typography.titleMedium
+                                                style = MaterialTheme.typography.titleMedium,
                                             )
                                             Text(
                                                 text = "${(imagePhase * 100).roundToInt()}%",
                                                 style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.primary,
                                             )
                                         }
                                         Slider(
                                             value = imagePhase,
                                             onValueChange = { imagePhase = (it * 100f).roundToInt() / 100f },
-                                            valueRange = 0f..1f
+                                            valueRange = 0f..1f,
                                         )
                                         Text(
                                             text = "Shifts the image position and adjusts where margins appear.",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
 
                                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
+                                            horizontalArrangement = Arrangement.SpaceBetween,
                                         ) {
                                             Text(
                                                 text = "Instances",
-                                                style = MaterialTheme.typography.titleMedium
+                                                style = MaterialTheme.typography.titleMedium,
                                             )
                                             Text(
-                                                text = "$instances",
+                                                text = instances.toString(),
                                                 style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.primary,
                                             )
                                         }
                                         Slider(
                                             value = instances.toFloat(),
                                             onValueChange = { instances = it.roundToInt() },
                                             valueRange = 1f..6f,
-                                            steps = 4
+                                            steps = 4,
                                         )
                                         Text(
                                             text = if (instances == 1) {
@@ -677,7 +672,7 @@ fun SpiralBannerScreen(
                                                 "Repeats $instances times around the pole (e.g. visible from opposite sides)."
                                             },
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                 }
@@ -688,20 +683,20 @@ fun SpiralBannerScreen(
                         HorizontalDivider()
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text(
                                 text = "Perimeter: ${(PI * poleDiameterMm).roundToInt()} mm",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            val stripLengthText = geometry?.let {
-                                "${String.format(Locale.US, "%.1f", it.estimatedLengthCm)} cm"
+                            val stripLengthText = geometry?.let { (_, _, _, _, _, _, _, _, estimatedLengthCm) ->
+                                "${String.format(Locale.US, "%.1f", estimatedLengthCm)} cm"
                             } ?: "..."
                             Text(
                                 text = "Strip Length: $stripLengthText",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
@@ -713,7 +708,7 @@ fun SpiralBannerScreen(
 
 @Composable
 private fun PrintDiameterTapeButton(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     OutlinedButton(
         onClick = {
@@ -724,12 +719,12 @@ private fun PrintDiameterTapeButton(
                 printer.printFormattedText("[L]<img>$hexString</img>\n", 0f)
             }
         },
-        modifier = modifier
+        modifier = modifier,
     ) {
         Icon(
             imageVector = Icons.Default.Straighten,
             contentDescription = null,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.size(8.dp))
         Text("Print Diameter Measuring Tape")

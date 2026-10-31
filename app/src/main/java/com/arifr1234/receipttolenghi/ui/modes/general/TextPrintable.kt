@@ -18,13 +18,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
 import com.dantsu.escposprinter.EscPosPrinter
-import java.util.UUID
 
 enum class TextSize(val tag: String, val label: String, val fontSize: TextUnit, val transform: TextGeometricTransform?) {
     NORMAL("normal", "Normal", 16.sp, null),
     WIDE("wide", "Wide", 16.sp, TextGeometricTransform(scaleX = 2f)),
     TALLke("tall", "Tall", 32.sp, TextGeometricTransform(scaleX = 0.5f)),
-    BIG("big", "Big", 32.sp, null)
+    BIG("big", "Big", 32.sp, null),
 }
 
 data class TextState(
@@ -32,7 +31,7 @@ data class TextState(
     val align: PrintAlignment = PrintAlignment.LEFT,
     val size: TextSize = TextSize.NORMAL,
     val isBold: Boolean = false,
-    val isUnderline: Boolean = false
+    val isUnderline: Boolean = false,
 ) : PrintableState
 
 object TextPrintableDefinition : PrintableDefinition<TextState> {
@@ -63,7 +62,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
                         fontWeight = fontWeight,
                         textDecoration = textDecoration,
                         fontSize = state.size.fontSize,
-                        textGeometricTransform = state.size.transform
+                        textGeometricTransform = state.size.transform,
                     ),
                 )
             }
@@ -72,19 +71,19 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
             if (hasUnsupportedChars) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Warning,
                         contentDescription = "Warning",
                         tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Special characters may not print correctly. Use 'Rendered Text' instead.",
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
                     )
                 }
             }
@@ -100,7 +99,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
                     FilterChip(
                         selected = state.align == alignment,
                         onClick = { onStateChange(state.copy(align = alignment)) },
-                        label = { Text(alignment.label) }
+                        label = { Text(alignment.label) },
                     )
                 }
             }
@@ -112,7 +111,7 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
                     FilterChip(
                         selected = state.size == textSize,
                         onClick = { onStateChange(state.copy(size = textSize)) },
-                        label = { Text(textSize.label) }
+                        label = { Text(textSize.label) },
                     )
                 }
             }
@@ -120,18 +119,18 @@ object TextPrintableDefinition : PrintableDefinition<TextState> {
             Spacer(modifier = Modifier.height(8.dp))
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FilterChip(
                     selected = state.isBold,
                     onClick = { onStateChange(state.copy(isBold = !state.isBold)) },
-                    label = { Text("Bold") }
+                    label = { Text("Bold") },
                 )
                 
                 FilterChip(
                     selected = state.isUnderline,
                     onClick = { onStateChange(state.copy(isUnderline = !state.isUnderline)) },
-                    label = { Text("Underline") }
+                    label = { Text("Underline") },
                 )
             }
         }

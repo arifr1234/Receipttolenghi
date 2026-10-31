@@ -20,20 +20,18 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.arifr1234.receipttolenghi.ui.modes.general.PlaylistManager
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableRegistry
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableState
 import com.arifr1234.receipttolenghi.ui.modes.general.PrintableType
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrintableCarousel(
     modifier: Modifier = Modifier,
-    onPrintSuccess: (PrintableState) -> Unit = {}
+    onPrintSuccess: (PrintableState) -> Unit = {},
 ) {
     val types = PrintableType.entries.filter { it != PrintableType.PLAYLIST }
-    val pagerState = rememberPagerState(pageCount = { types.size })
+    val pagerState = rememberPagerState { types.size }
     val coroutineScope = rememberCoroutineScope()
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -60,7 +58,7 @@ fun PrintableCarousel(
             modifier = Modifier.fillMaxWidth(),
             containerColor = Color.Transparent,
             edgePadding = 8.dp,
-            divider = {}
+            divider = {},
         ) {
             types.forEachIndexed { index, type ->
                 Tab(
@@ -76,9 +74,9 @@ fun PrintableCarousel(
                             text = type.definition.displayName,
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
                         )
-                    }
+                    },
                 )
             }
         }
@@ -92,7 +90,7 @@ fun PrintableCarousel(
             modifier = Modifier
                 .fillMaxWidth()
                 .animateContentSize(alignment = Alignment.BottomCenter),
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.Bottom,
         ) { page ->
             PrintableCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -103,7 +101,7 @@ fun PrintableCarousel(
                 },
                 onPrintSuccess = onPrintSuccess,
                 definition = PrintableRegistry.getTypedDefinitionFor(types[page]),
-                clearAfterPrint = true
+                clearAfterPrint = true,
             )
         }
 
@@ -112,7 +110,7 @@ fun PrintableCarousel(
         // Dot Indicators
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.Center,
         ) {
             repeat(types.size) { iteration ->
                 val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
@@ -121,7 +119,7 @@ fun PrintableCarousel(
                         .padding(2.dp)
                         .clip(CircleShape)
                         .background(color)
-                        .size(8.dp)
+                        .size(8.dp),
                 )
             }
         }

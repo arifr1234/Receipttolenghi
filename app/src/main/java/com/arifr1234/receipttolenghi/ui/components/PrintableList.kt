@@ -39,20 +39,20 @@ fun PrintableList(
             state = listState,
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
+            itemsIndexed(items, key = { _, (id) -> id }) { index, item ->
                 val printableState = item.state
 
                 Row(
                     modifier = Modifier.fillMaxWidth().animateItem(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (isManageMode) {
                         ItemManageControls(
                             onDelete = { onDelete(item) },
-                            onMoveUp = if (onReorder != null && index > 0) { { onReorder(index, index - 1) } } else null,
-                            onMoveDown = if (onReorder != null && index < items.size - 1) { { onReorder(index, index + 1) } } else null
+                            onMoveUp = if ((onReorder != null) && (index > 0)) { { onReorder(index, index - 1) } } else null,
+                            onMoveDown = if ((onReorder != null) && (index < (items.size - 1))) { { onReorder(index, index + 1) } } else null,
                         )
                     }
                     
@@ -62,7 +62,7 @@ fun PrintableList(
                             definition = PrintableRegistry.getTypedDefinitionFor(printableState),
                             onStateChange = { updated ->
                                 onStateChange(item, updated)
-                            }
+                            },
                         )
                         if (currentlyPrintingId == item.id) {
                             GlowingDot(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp))
@@ -78,35 +78,35 @@ fun PrintableList(
 private fun ItemManageControls(
     onDelete: () -> Unit,
     onMoveUp: (() -> Unit)?,
-    onMoveDown: (() -> Unit)?
+    onMoveDown: (() -> Unit)?,
 ) {
     IconButton(
         onClick = onDelete,
-        modifier = Modifier.size(36.dp)
+        modifier = Modifier.size(36.dp),
     ) {
         Icon(
             imageVector = Icons.Default.Delete,
             contentDescription = "Delete",
-            tint = MaterialTheme.colorScheme.error
+            tint = MaterialTheme.colorScheme.error,
         )
     }
     
-    if (onMoveUp != null || onMoveDown != null) {
+    if ((onMoveUp != null) || (onMoveDown != null)) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
         ) {
             IconButton(
                 onClick = { onMoveUp?.invoke() },
                 enabled = onMoveUp != null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             ) {
                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up")
             }
             IconButton(
                 onClick = { onMoveDown?.invoke() },
                 enabled = onMoveDown != null,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
             ) {
                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down")
             }

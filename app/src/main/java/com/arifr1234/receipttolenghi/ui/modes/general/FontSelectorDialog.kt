@@ -42,18 +42,18 @@ fun FontSelectorDialog(
     selectedSubsets: Set<String> = emptySet(),
     onSelectedSubsetsChange: (Set<String>) -> Unit = {},
     selectedTags: Map<String, String> = emptyMap(),
-    onSelectedTagsChange: (Map<String, String>) -> Unit = {}
+    onSelectedTagsChange: (Map<String, String>) -> Unit = {},
 ) {
     var fonts by remember { mutableStateOf<List<GoogleFontFamily>>(emptyList()) }
     var subsets by remember { mutableStateOf<List<String>>(emptyList()) }
     var tagsByCategory by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(value = true) }
 
     val provider = remember {
         GoogleFont.Provider(
             providerAuthority = "com.google.android.gms.fonts",
             providerPackage = "com.google.android.gms",
-            certificates = R.array.com_google_android_gms_fonts_certs
+            certificates = R.array.com_google_android_gms_fonts_certs,
         )
     }
 
@@ -69,18 +69,18 @@ fun FontSelectorDialog(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(1f)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
         ) {
             Text(
                 text = "Select Font",
                 style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp),
             )
 
             OutlinedTextField(
@@ -94,27 +94,29 @@ fun FontSelectorDialog(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { 
-                            onSearchQueryChange("")
-                        }) {
+                        IconButton(
+                            onClick = { 
+                                onSearchQueryChange("")
+                            },
+                        ) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear")
                         }
                     }
-                }
+                },
             )
 
             SubsetSelector(
                 subsets = subsets,
                 selectedSubsets = selectedSubsets,
                 onSelectedSubsetsChange = onSelectedSubsetsChange,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             )
 
             tagsByCategory.forEach { (category, tags) ->
                 if (tags.isNotEmpty()) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val isSelected = selectedTags[category] != null
                         Text(
@@ -122,7 +124,7 @@ fun FontSelectorDialog(
                             style = MaterialTheme.typography.labelMedium, 
                             color = if (isSelected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Unspecified,
                             fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else null,
-                            modifier = Modifier.padding(end = 8.dp)
+                            modifier = Modifier.padding(end = 8.dp),
                         )
 
                         Row(
@@ -130,7 +132,7 @@ fun FontSelectorDialog(
                                 .weight(1f)
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             tags.forEach { tag ->
                                 FilterChip(
@@ -142,7 +144,7 @@ fun FontSelectorDialog(
                                             onSelectedTagsChange(selectedTags + (category to tag))
                                         }
                                     },
-                                    label = { Text(tag) }
+                                    label = { Text(tag) },
                                 )
                             }
                         }
@@ -176,7 +178,7 @@ fun FontSelectorDialog(
                 }
 
 
-                var isFirstLaunch by remember { mutableStateOf(true) }
+                var isFirstLaunch by remember { mutableStateOf(value = true) }
                 LaunchedEffect(searchQuery, selectedSubsets, selectedTags) {
                     if (isFirstLaunch) {
                         isFirstLaunch = false
@@ -191,7 +193,7 @@ fun FontSelectorDialog(
                         override suspend fun ScrollScope.performFling(initialVelocity: Float): Float {
                             // Dramatically reduce fling velocity to prevent scrolling past hundreds of fonts
                             val dampen = 0.05f
-                            scrollBy(initialVelocity * dampen / 10f)
+                            scrollBy((initialVelocity * dampen) / 10f)
                             return 0f
                         }
                     }
@@ -202,8 +204,11 @@ fun FontSelectorDialog(
                         override fun onPostScroll(
                             consumed: Offset,
                             available: Offset,
-                            source: NestedScrollSource
+                            source: NestedScrollSource,
                         ): Offset {
+                            consumed.let {}
+                            source.let {}
+
                             // Consume the remaining scroll so the bottom sheet doesn't dismiss
                             return available
                         }
@@ -216,12 +221,12 @@ fun FontSelectorDialog(
                         .fillMaxWidth()
                         .weight(1f)
                         .nestedScroll(nestedScrollConnection),
-                    flingBehavior = highFrictionFling
+                    flingBehavior = highFrictionFling,
                 ) {
-                    items(filteredFonts, key = { it.family }) { font ->
-                        val fontFamily = remember(font.family) {
+                    items(filteredFonts, key = { (family) -> family }) { (family) ->
+                        val fontFamily = remember(family) {
                             FontFamily(
-                                Font(googleFont = GoogleFont(font.family), fontProvider = provider)
+                                Font(googleFont = GoogleFont(family), fontProvider = provider),
                             )
                         }
 
@@ -229,18 +234,18 @@ fun FontSelectorDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    onFontSelected(font.family)
+                                    onFontSelected(family)
                                     onDismiss()
                                 }
                                 .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = font.family,
+                                text = family,
                                 fontFamily = fontFamily,
                                 fontSize = 24.sp,
                                 maxLines = 1,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
@@ -256,24 +261,24 @@ fun SubsetSelector(
     subsets: List<String>,
     selectedSubsets: Set<String>,
     onSelectedSubsetsChange: (Set<String>) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     // TODO: This composable is more complicated then I wished it was.
 
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(value = false) }
     var searchText by remember { mutableStateOf("") }
     
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = it },
-        modifier = modifier
+        modifier = modifier,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             selectedSubsets.forEach { subset ->
                 InputChip(
@@ -281,7 +286,7 @@ fun SubsetSelector(
                     onClick = { onSelectedSubsetsChange(selectedSubsets - subset) },
                     label = { Text(subset) },
                     trailingIcon = { Icon(Icons.Default.Clear, contentDescription = "Remove", modifier = Modifier.size(16.dp)) },
-                    modifier = Modifier.align(Alignment.CenterVertically)
+                    modifier = Modifier.align(Alignment.CenterVertically),
                 )
             }
             
@@ -294,25 +299,25 @@ fun SubsetSelector(
                 modifier = Modifier
                     .widthIn(min = 120.dp)
                     .align(Alignment.CenterVertically)
-                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, enabled = true),
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
                 singleLine = true,
                 decorationBox = { innerTextField ->
                     Box(
                         contentAlignment = Alignment.CenterStart,
-                        modifier = Modifier.defaultMinSize(minHeight = 32.dp)
+                        modifier = Modifier.defaultMinSize(minHeight = 32.dp),
                     ) {
                         if (searchText.isEmpty()) {
                             Text(
                                 "+ Language",
                                 color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.bodyMedium
+                                style = MaterialTheme.typography.bodyMedium,
                             )
                         }
                         innerTextField()
                     }
-                }
+                },
             )
         }
         
@@ -323,8 +328,8 @@ fun SubsetSelector(
         
         if (filteredDropdown.isNotEmpty() && expanded) {
             ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
+                expanded = true,
+                onDismissRequest = { expanded = false },
             ) {
                 filteredDropdown.forEach { subset ->
                     DropdownMenuItem(
@@ -333,7 +338,7 @@ fun SubsetSelector(
                             onSelectedSubsetsChange(selectedSubsets + subset)
                             searchText = ""
                             expanded = false
-                        }
+                        },
                     )
                 }
             }

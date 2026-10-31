@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import com.dantsu.escposprinter.EscPosPrinter
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
-import java.util.UUID
 import androidx.core.graphics.createBitmap
 import androidx.compose.ui.text.style.TextAlign
 
@@ -44,7 +43,7 @@ data class RenderedTextState(
     val isBold: Boolean = false,
     val isItalic: Boolean = false,
     val isUnderline: Boolean = false,
-    val fontName: String? = null
+    val fontName: String? = null,
 ) : PrintableState
 
 object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> {
@@ -63,7 +62,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
             androidx.compose.ui.text.googlefonts.GoogleFont.Provider(
                 providerAuthority = "com.google.android.gms.fonts",
                 providerPackage = "com.google.android.gms",
-                certificates = R.array.com_google_android_gms_fonts_certs
+                certificates = R.array.com_google_android_gms_fonts_certs,
             )
         }
         val fontFamily = remember(state.fontName) {
@@ -71,8 +70,8 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                 androidx.compose.ui.text.font.FontFamily(
                     androidx.compose.ui.text.googlefonts.Font(
                         googleFont = androidx.compose.ui.text.googlefonts.GoogleFont(state.fontName),
-                        fontProvider = provider
-                    )
+                        fontProvider = provider,
+                    ),
                 )
             } else {
                 androidx.compose.ui.text.font.FontFamily.Default
@@ -97,7 +96,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     textDecoration = textDecoration,
                     fontFamily = fontFamily,
                     // Map the raw pixel font size to sp for a rough preview in the UI
-                    fontSize = state.fontSize.sp
+                    fontSize = state.fontSize.sp,
                 ),
             )
         }
@@ -112,7 +111,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     FilterChip(
                         selected = state.align == alignment,
                         onClick = { onStateChange(state.copy(align = alignment)) },
-                        label = { Text(alignment.label) }
+                        label = { Text(alignment.label) },
                     )
                 }
             }
@@ -124,11 +123,11 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                 value = state.fontSize,
                 onValueChange = { onStateChange(state.copy(fontSize = it)) },
                 valueRange = 16f..128f,
-                steps = (128 - 16) / 4 - 1
+                steps = ((128 - 16) / 4) - 1,
             )
 
             Spacer(modifier = Modifier.height(8.dp))
-            var showFontSelector by remember { mutableStateOf(false) }
+            var showFontSelector by remember { mutableStateOf(value = false) }
             val fontListState = androidx.compose.foundation.lazy.rememberLazyListState()
             var fontSearchQuery by remember { mutableStateOf("") }
             var fontSelectedSubsets by remember { mutableStateOf(emptySet<String>()) }
@@ -144,8 +143,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     selectedSubsets = fontSelectedSubsets,
                     onSelectedSubsetsChange = { fontSelectedSubsets = it },
                     selectedTags = fontSelectedTags,
-                    onSelectedTagsChange = { fontSelectedTags = it }
-                )
+                ) { fontSelectedTags = it }
             }
 
             val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -154,7 +152,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                     focusManager.clearFocus()
                     showFontSelector = true 
                 },
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             ) {
                 Text(state.fontName ?: "Default Font")
             }
@@ -162,25 +160,25 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
 
                 FilterChip(
                     selected = state.isBold,
                     onClick = { onStateChange(state.copy(isBold = !state.isBold)) },
-                    label = { Text("Bold") }
+                    label = { Text("Bold") },
                 )
                 
                 FilterChip(
                     selected = state.isItalic,
                     onClick = { onStateChange(state.copy(isItalic = !state.isItalic)) },
-                    label = { Text("Italic") }
+                    label = { Text("Italic") },
                 )
                 
                 FilterChip(
                     selected = state.isUnderline,
                     onClick = { onStateChange(state.copy(isUnderline = !state.isUnderline)) },
-                    label = { Text("Underline") }
+                    label = { Text("Underline") },
                 )
             }
         }
@@ -202,7 +200,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                 "com.google.android.gms.fonts",
                 "com.google.android.gms",
                 state.fontName,
-                R.array.com_google_android_gms_fonts_certs
+                R.array.com_google_android_gms_fonts_certs,
             )
             val result = androidx.core.provider.FontsContractCompat.fetchFonts(context, null, request)
             if (result.statusCode == androidx.core.provider.FontsContractCompat.FontFamilyResult.STATUS_OK) {
@@ -212,7 +210,7 @@ object RenderedTextPrintableDefinition : PrintableDefinition<RenderedTextState> 
                 }
             } else {
                 com.arifr1234.receipttolenghi.utils.AppNotifier.handleError(
-                    IllegalStateException("Failed to fetch font '${state.fontName}' for printing. Status code: ${result.statusCode}")
+                    IllegalStateException("Failed to fetch font '${state.fontName}' for printing. Status code: ${result.statusCode}"),
                 )
             }
         }

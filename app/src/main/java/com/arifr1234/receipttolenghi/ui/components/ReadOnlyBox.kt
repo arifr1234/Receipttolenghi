@@ -16,10 +16,10 @@ import androidx.compose.ui.draw.alpha
 fun ReadOnlyBox(
     isReadOnly: Boolean,
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     Box(
-        modifier = modifier.alpha(if (isReadOnly) 0.6f else 1f)
+        modifier = modifier.alpha(if (isReadOnly) 0.6f else 1f),
     ) {
         content()
         if (isReadOnly) {
@@ -29,8 +29,7 @@ fun ReadOnlyBox(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = {}
-                    )
+                    ) {},
             )
         }
     }

@@ -27,7 +27,7 @@ data class SpiralGeometry(
     val turnsY: Float,
     val cylinderAspectRatio: Float,
     val estimatedLengthCm: Float,
-    val printableRatio: Float
+    val printableRatio: Float,
 )
 
 object SpiralBannerEngine {
@@ -82,7 +82,7 @@ object SpiralBannerEngine {
 
     /**
      * Stage 1: Unwraps the source image into the continuous helical paper strip.
-     * Uses BitmapShader with TileMode.REPEAT in the horizontal direction.
+     * Uses BitmapShader with `TileMode.REPEAT` in the horizontal direction.
      * Phase offset is handled directly by translating the shader matrix.
      */
     fun unwrapToStrip(

@@ -22,19 +22,19 @@ import kotlinx.coroutines.launch
 fun PlaylistViewerScreen(
     playlistId: String,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val disk = remember(playlistId) { PlaylistManager.DiskPlaylist(playlistId) }
     val editor = rememberObservablePersistentState(disk)
     val items by editor.stateFlow.collectAsState()
     
     val playlists by PlaylistManager.playlists.collectAsState()
-    val header = playlists.find { it.id == playlistId }
+    val header = playlists.find { (id) -> id == playlistId }
 
-    var isManageMode by remember { mutableStateOf(false) }
+    var isManageMode by remember { mutableStateOf(value = false) }
     var currentlyPrintingId by remember { mutableStateOf<String?>(null) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var cancelRequested by remember { mutableStateOf(false) }
+    var isPlaying by remember { mutableStateOf(value = false) }
+    var cancelRequested by remember { mutableStateOf(value = false) }
     
 
     val context = LocalContext.current
@@ -51,21 +51,23 @@ fun PlaylistViewerScreen(
                 },
                 actions = {
                     val coroutineScope = rememberCoroutineScope()
-                    IconButton(onClick = {
-                        coroutineScope.launch {
-                            try {
-                                val uri = PlaylistShareManager.exportPlaylist(context, playlistId)
-                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "*/*"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    IconButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                try {
+                                    val uri = PlaylistShareManager.exportPlaylist(context, playlistId)
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "*/*"
+                                        putExtra(Intent.EXTRA_STREAM, uri)
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
+                                } catch (e: Exception) {
+                                    AppNotifier.handleError(e, "Failed to share playlist")
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, "Share Playlist"))
-                            } catch (e: Exception) {
-                                AppNotifier.handleError(e, "Failed to share playlist")
                             }
-                        }
-                    }) {
+                        },
+                    ) {
                         Icon(Icons.Default.Share, contentDescription = "Share")
                     }
                     
@@ -74,44 +76,46 @@ fun PlaylistViewerScreen(
                             Icon(Icons.Default.Close, contentDescription = "Stop", tint = MaterialTheme.colorScheme.error)
                         }
                     } else {
-                        IconButton(onClick = {
-                            if (items.isEmpty()) return@IconButton
-                            isPlaying = true
-                            cancelRequested = false
-                            
-                            PrinterManager.printAsync { printer ->
-                                try {
-                                    for (item in items) {
-                                        if (cancelRequested) break
-                                        currentlyPrintingId = item.id
-                                        val definition = PrintableRegistry.getTypedDefinitionFor(item.state)
-                                        definition.print(context, item.state, printer)
+                        IconButton(
+                            onClick = {
+                                if (items.isEmpty()) return@IconButton
+                                isPlaying = true
+                                cancelRequested = false
+                                
+                                PrinterManager.printAsync { printer ->
+                                    try {
+                                        for ((id, state) in items) {
+                                            if (cancelRequested) break
+                                            currentlyPrintingId = id
+                                            val definition = PrintableRegistry.getTypedDefinitionFor(state)
+                                            definition.print(context, state, printer)
+                                        }
+                                    } finally {
+                                        currentlyPrintingId = null
+                                        isPlaying = false
                                     }
-                                } finally {
-                                    currentlyPrintingId = null
-                                    isPlaying = false
                                 }
-                            }
-                        }) {
+                            },
+                        ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = "Play All")
                         }
                     }
                     TextButton(onClick = { isManageMode = !isManageMode }) {
                         Text(if (isManageMode) "Done" else "Manage")
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         PrintableList(
             modifier = Modifier.padding(innerPadding),
             items = items,
             isManageMode = isManageMode,
-            onStateChange = { original, updatedState ->
-                editor.set(items.map { if (it.id == original.id) it.copy(state = updatedState) else it })
+            onStateChange = { (originalId), updatedState ->
+                editor.set(items.map { if (it.id == originalId) it.copy(state = updatedState) else it })
             },
-            onDelete = { deletedItem ->
-                editor.set(items.filter { it.id != deletedItem.id })
+            onDelete = { (deletedId) ->
+                editor.set(items.filter { (id) -> id != deletedId })
             },
             onReorder = { from, to ->
                 val mutableItems = items.toMutableList()
@@ -119,7 +123,7 @@ fun PlaylistViewerScreen(
                 mutableItems.add(to, item)
                 editor.set(mutableItems)
             },
-            currentlyPrintingId = currentlyPrintingId
+            currentlyPrintingId = currentlyPrintingId,
         )
     }
 }

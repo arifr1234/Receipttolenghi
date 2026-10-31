@@ -37,6 +37,7 @@ object PrinterManager {
     private val printScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val printMutex = Mutex()
 
+    @Suppress("unused")
     fun isConnected(): Boolean = printer != null
 
     private fun getPrinterOrThrow(): EscPosPrinter {
@@ -60,7 +61,7 @@ object PrinterManager {
         }
     }
 
-    val isConnecting = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isConnecting = kotlinx.coroutines.flow.MutableStateFlow(value = false)
 
     @SuppressLint("MissingPermission")
     suspend fun connect(isMock: Boolean = false, silent: Boolean = false): Boolean = withContext(Dispatchers.IO) {
@@ -88,7 +89,7 @@ object PrinterManager {
                     false
                 }
             }
-        }.getOrDefault(false)
+        }.getOrDefault(defaultValue = false)
         
         isConnecting.value = false
         result

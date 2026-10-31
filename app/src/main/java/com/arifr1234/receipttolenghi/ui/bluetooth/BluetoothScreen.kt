@@ -26,7 +26,7 @@ import androidx.compose.runtime.collectAsState
 @Composable
 fun BluetoothScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val isConnecting by PrinterManager.isConnecting.collectAsState()
     val coroutineScope = rememberCoroutineScope()
@@ -38,7 +38,7 @@ fun BluetoothScreen(
     }
 
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) { grantedMap ->
         val allGranted = grantedMap.values.all { it }
         if (allGranted) {
@@ -55,18 +55,18 @@ fun BluetoothScreen(
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Text(
             text = "Bluetooth Connection",
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 24.dp),
         )
 
         Button(
             onClick = { launcher.launch(permissions) },
             enabled = !isConnecting,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
         ) {
             Text(if (isConnecting) "Connecting..." else "Connect to First Paired Printer")
         }
@@ -78,7 +78,7 @@ fun BluetoothScreen(
                 }
             },
             enabled = !isConnecting,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 16.dp),
         ) {
             Text("Connect to Mock Printer")
         }

@@ -10,9 +10,9 @@ Welcome! You are working on **Receipttolenghi**, an Android application that com
 
 ## Coding Standards
 1. **Reduce the amount of code you write**
-   a. Always use libraries and pre-made components when fitting libraries exist and are maintained.
-   b. Write minimal code, prioritize code maintainability.
-   c. Don't do redundant error handling, make it as contained and minimal as possible.
+   - Always use libraries and pre-made components when fitting libraries exist and are maintained.
+   - Write minimal code, prioritize code maintainability.
+   - Don't do redundant error handling, make it as contained and minimal as possible.
 2. **Write modular, decoupled code and components.**
 3. **If you don't know which solution is preferable, ask.**
 

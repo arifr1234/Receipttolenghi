@@ -21,7 +21,7 @@ enum class BrightnessCurve(val label: String, val transform: (x: Double, m: Doub
 object ImageUtils {
 
     /**
-     * Scales an image with anti-aliasing.
+     * Scales an image with antialiasing.
      * Uses Area Averaging (Box Filtering) for large downscales (> 2.0x) to sample 100% of the pixels
      * and eliminate aliasing/moiré, and smooth bilinear interpolation for scales <= 2.0x and upscaling.
      */
@@ -36,7 +36,7 @@ object ImageUtils {
 
         // When downscaling by <= 2.0x in both dimensions (or upscaling), the 2.0px bilinear
         // kernel covers all source pixels without blind gaps and provides smoother sub-pixel blending.
-        if (scaleX <= 2.0f && scaleY <= 2.0f) {
+        if ((scaleX <= 2.0f) && (scaleY <= 2.0f)) {
             return source.scale(dstW, dstH)
         }
 
@@ -138,7 +138,7 @@ object ImageUtils {
 }
 
 /**
- * Convenient extension to scale a Bitmap with anti-aliasing.
+ * Convenient extension to scale a Bitmap with antialiasing.
  */
 fun Bitmap.scaleAntiAliased(targetWidth: Int, targetHeight: Int): Bitmap =
     ImageUtils.scaleAntiAliased(this, targetWidth, targetHeight)

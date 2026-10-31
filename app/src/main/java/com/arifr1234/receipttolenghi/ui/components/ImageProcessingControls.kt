@@ -2,7 +2,6 @@ package com.arifr1234.receipttolenghi.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,12 +35,11 @@ import com.arifr1234.receipttolenghi.utils.BrightnessCurve
 import java.util.Locale
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DitheringAlgorithmSelector(
     selectedAlgorithm: DitheringAlgorithm,
     onAlgorithmSelected: (DitheringAlgorithm) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
         Text("Dithering Algorithm", style = MaterialTheme.typography.labelMedium)
@@ -49,14 +47,14 @@ fun DitheringAlgorithmSelector(
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
                 DitheringAlgorithm.entries.forEach { algo ->
                     FilterChip(
                         selected = selectedAlgorithm == algo,
                         onClick = { onAlgorithmSelected(algo) },
-                        label = { Text(algo.label) }
+                        label = { Text(algo.label) },
                     )
                 }
             }
@@ -70,9 +68,9 @@ fun BrightnessCompensationSelector(
     onMultiplierChange: (Float) -> Unit,
     brightnessCurve: BrightnessCurve,
     onCurveChange: (BrightnessCurve) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
-    var showBrightnessInfo by remember { mutableStateOf(false) }
+    var showBrightnessInfo by remember { mutableStateOf(value = false) }
 
     if (showBrightnessInfo) {
         AlertDialog(
@@ -83,29 +81,29 @@ fun BrightnessCompensationSelector(
                 }
             },
             title = { Text("Brightness Compensation") },
-            text = { Text("Thermally printed images tend to appear darker.") }
+            text = { Text("Thermally printed images tend to appear darker.") },
         )
     }
 
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Brightness (%.1fx)".format(Locale.US, brightnessMultiplier),
-                style = MaterialTheme.typography.labelMedium
+                style = MaterialTheme.typography.labelMedium,
             )
             IconButton(
                 onClick = { showBrightnessInfo = true },
                 modifier = Modifier
                     .size(28.dp)
-                    .padding(start = 2.dp)
+                    .padding(start = 2.dp),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
                     contentDescription = "Brightness Info",
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(18.dp),
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
@@ -115,7 +113,7 @@ fun BrightnessCompensationSelector(
                         FilterChip(
                             selected = brightnessCurve == curve,
                             onClick = { onCurveChange(curve) },
-                            label = { Text(curve.label) }
+                            label = { Text(curve.label) },
                         )
                     }
                 }
@@ -126,7 +124,7 @@ fun BrightnessCompensationSelector(
             onValueChange = { onMultiplierChange((it * 10f).roundToInt() / 10f) },
             valueRange = 1f..4f,
             steps = 29,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

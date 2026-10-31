@@ -42,10 +42,10 @@ enum class AppRoute(val title: String) {
 class MainActivity : ComponentActivity() {
     data class AppMode(
         val route: AppRoute,
-        val content: @Composable (modifier: Modifier, onNavigateBack: () -> Unit) -> Unit
+        val content: @Composable (modifier: Modifier, onNavigateBack: () -> Unit) -> Unit,
     )
 
-    private val APP_MODES = listOf(
+    private val appModes = listOf(
         AppMode(AppRoute.TEST_PRINTER) { modifier, onNavigateBack ->
             TestPrinterScreen(onNavigateBack = onNavigateBack, modifier = modifier)
         },
@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
                             PlaylistShareManager.importPlaylists(this@MainActivity, uri)
                             AppNotifier.showMessage("Playlists imported successfully")
                         }
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         // Exception already logged by runWithGlobalLog, just catch to prevent crash
                     }
                 }
@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    val selectedMode = APP_MODES.find { it.route == currentScreen }
+                    val selectedMode = appModes.find { it.route == currentScreen }
                     
                     if (selectedMode != null) {
                         selectedMode.content(Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) { currentScreen = AppRoute.HOME }
@@ -161,7 +161,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding),
                                     onNavigateToBluetooth = { currentScreen = AppRoute.BLUETOOTH },
                                     onNavigateToMode = { route -> currentScreen = route },
-                                    modes = APP_MODES.map { it.route }
+                                    modes = appModes.map { it.route }
                                 )
                             }
                         }

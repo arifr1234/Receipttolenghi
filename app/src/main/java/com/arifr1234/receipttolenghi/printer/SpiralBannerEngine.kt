@@ -8,6 +8,8 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Shader
 import androidx.core.graphics.createBitmap
+import com.arifr1234.receipttolenghi.utils.BrightnessCurve
+import com.arifr1234.receipttolenghi.utils.applyToneCurve
 import com.arifr1234.receipttolenghi.utils.scaleAntiAliased
 import kotlin.math.PI
 import kotlin.math.max
@@ -81,8 +83,13 @@ object SpiralBannerEngine {
     /**
      * Stage 1: Unwraps the source image into the continuous helical paper strip.
      * Uses BitmapShader with TileMode.REPEAT in the horizontal direction.
+     * Phase offset is handled directly by translating the shader matrix.
      */
-    fun unwrapToStrip(sourceBitmap: Bitmap, geometry: SpiralGeometry): Bitmap {
+    fun unwrapToStrip(
+        sourceBitmap: Bitmap,
+        geometry: SpiralGeometry,
+        phase: Float = 0f
+    ): Bitmap {
         val stripWidth = max(geometry.paperWidthPx.roundToInt(), 1)
         val stripHeight = max(geometry.stripHeightPx, 1)
 
@@ -102,6 +109,10 @@ object SpiralBannerEngine {
                 -geometry.cosTheta, geometry.sinTheta, geometry.leadInHeightPx,
                 0f, 0f, 1f
             ))
+            val phaseOffsetPx = ((phase % 1.0f + 1.0f) % 1.0f) * sourceBitmap.width
+            if (phaseOffsetPx != 0f) {
+                preTranslate(phaseOffsetPx, 0f)
+            }
         }
         shader.setLocalMatrix(shaderMatrix)
 
@@ -123,11 +134,14 @@ object SpiralBannerEngine {
 
     /**
      * Stage 2: Crops the centered printable section of the unwrapped strip,
-     * downscales it to printer resolution, and applies dithering.
+     * downscales it to printer resolution, applies brightness tone curve, and dithers.
      */
     fun processForPrinter(
         unwrappedStrip: Bitmap,
         geometry: SpiralGeometry,
+        brightnessMultiplier: Float = 2.0f,
+        brightnessCurve: BrightnessCurve = BrightnessCurve.CURVE,
+        ditheringAlgorithm: DitheringAlgorithm = DitheringAlgorithm.FLOYD_STEINBERG,
         printerWidthPx: Int = PrinterManager.MAX_PRINTER_WIDTH_PX
     ): Bitmap {
         val targetWidth = max(printerWidthPx, 1)
@@ -145,7 +159,130 @@ object SpiralBannerEngine {
         val targetHeight = max((printableStrip.height.toFloat() * scale).roundToInt(), 1)
 
         val scaledStrip = printableStrip.scaleAntiAliased(targetWidth, targetHeight)
-        return DitheringEngine.applyFloydSteinberg(scaledStrip)
+        val toneAdjustedStrip = if (brightnessMultiplier != 1.0f) {
+            scaledStrip.applyToneCurve(brightnessMultiplier, brightnessCurve)
+        } else {
+            scaledStrip
+        }
+        return ditheringAlgorithm.applyAlgo(toneAdjustedStrip)
+    }
+
+    /**
+     * Prepares a slot bitmap for fractional pole coverage.
+     * When coverageFraction < 1.0, the source image is padded with white columns
+     * so it occupies the requested fraction of the pole turn.
+     * Phase offset is handled directly by shaderMatrix in unwrapToStrip.
+     */
+    fun prepareSlotBitmap(
+        sourceBitmap: Bitmap,
+        coverageFraction: Float,
+        maxDimension: Int = 1800
+    ): Bitmap {
+        val clampedCoverage = coverageFraction.coerceIn(0.1f, 1.0f)
+        if (clampedCoverage >= 0.999f) {
+            return prepareSourceBitmap(sourceBitmap, maxDimension)
+        }
+
+        val maxImgW = (maxDimension * clampedCoverage).roundToInt().coerceAtLeast(10)
+        val baseBitmap = prepareSourceBitmap(sourceBitmap, maxImgW)
+        val slotW = max((baseBitmap.width / clampedCoverage).roundToInt(), baseBitmap.width + 1)
+        val slotBitmap = createBitmap(slotW, baseBitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(slotBitmap)
+        canvas.drawColor(Color.WHITE)
+        canvas.drawBitmap(baseBitmap, 0f, 0f, null)
+        return slotBitmap
+    }
+
+    /**
+     * Generates a calibrated diameter measuring tape (pi-tape) up to maxDiameterMm.
+     * Each 1mm of diameter corresponds to pi * 7.992 dots of tape length.
+     * Wrapping this tape around a cylindrical pole allows direct reading of diameter.
+     */
+    fun generateDiameterTape(
+        maxDiameterMm: Int = 80,
+        printerWidthPx: Int = PrinterManager.MAX_PRINTER_WIDTH_PX
+    ): Bitmap {
+        val width = max(printerWidthPx, 1)
+        val zeroY = PrinterManager.mmToPx(18f).toFloat()
+        val totalHeight = zeroY + PrinterManager.mmToPx((PI * maxDiameterMm).toFloat()) + PrinterManager.mmToPx(8f)
+
+        val bitmap = createBitmap(width, totalHeight.roundToInt(), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+
+        val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            strokeWidth = 2f
+            style = Paint.Style.STROKE
+        }
+
+        val boldLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            strokeWidth = 4f
+            style = Paint.Style.STROKE
+        }
+
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 28f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.LEFT
+        }
+
+        val subTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 18f
+            textAlign = Paint.Align.CENTER
+        }
+
+        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = 22f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textAlign = Paint.Align.CENTER
+        }
+
+        // Header instructions
+        canvas.drawText("DIAMETER TAPE (mm)", width / 2f, 35f, titlePaint)
+        canvas.drawText("Cut/fold at 0 line. Wrap around pole.", width / 2f, 65f, subTextPaint)
+        canvas.drawText("Read diameter where 0 overlaps tape.", width / 2f, 92f, subTextPaint)
+        canvas.drawText("▼ ALIGN 0 LINE HERE ▼", width / 2f, 122f, titlePaint)
+
+        // Baseline on left and right
+        canvas.drawLine(0f, zeroY, 0f, totalHeight - 40f, boldLinePaint)
+        canvas.drawLine(width - 1f, zeroY, width - 1f, totalHeight - 40f, boldLinePaint)
+
+        // Zero reference line
+        canvas.drawLine(0f, zeroY, width.toFloat(), zeroY, boldLinePaint)
+        canvas.drawText("0 mm", 20f, zeroY - 8f, textPaint)
+
+        // Ticks
+        for (d in 1..maxDiameterMm) {
+            val y = zeroY + PrinterManager.mmToPx((PI * d).toFloat())
+            when {
+                d % 10 == 0 -> {
+                    // Major tick
+                    canvas.drawLine(0f, y, 75f, y, boldLinePaint)
+                    canvas.drawLine(width - 75f, y, width.toFloat(), y, boldLinePaint)
+                    val label = "$d mm"
+                    canvas.drawText(label, 85f, y + 10f, textPaint)
+                }
+                d % 5 == 0 -> {
+                    // Medium tick
+                    canvas.drawLine(0f, y, 50f, y, linePaint)
+                    canvas.drawLine(width - 50f, y, width.toFloat(), y, linePaint)
+                }
+                else -> {
+                    // Minor tick
+                    canvas.drawLine(0f, y, 28f, y, linePaint)
+                    canvas.drawLine(width - 28f, y, width.toFloat(), y, linePaint)
+                }
+            }
+        }
+
+        canvas.drawText("▲ MAX $maxDiameterMm mm ▲", width / 2f, totalHeight - 15f, titlePaint)
+
+        return DitheringEngine.applyThreshold(bitmap)
     }
 
     /**

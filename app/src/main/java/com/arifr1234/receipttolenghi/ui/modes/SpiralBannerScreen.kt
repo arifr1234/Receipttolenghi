@@ -292,7 +292,7 @@ fun SpiralBannerScreen(
             delay(60.milliseconds)
         }
         withContext(Dispatchers.Default) {
-            unwrappedStrip = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = imagePhase)
+            unwrappedStrip = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = imagePhase * instances)
             isUnwrapping = false
         }
     }
@@ -444,6 +444,7 @@ fun SpiralBannerScreen(
                                     }
 
                                     drawIntoCanvas { canvas ->
+                                        val effectiveRotation = rotationAngle - (imagePhase * (2.0f * PI.toFloat()))
                                         shaderRenderer.render(
                                             canvas = canvas.nativeCanvas,
                                             ditheredBitmap = currentStrip,
@@ -452,7 +453,7 @@ fun SpiralBannerScreen(
                                             canvasHeight = size.height,
                                             cylWidth = cylW,
                                             cylHeight = cylH,
-                                            rotation = rotationAngle
+                                            rotation = effectiveRotation
                                         )
                                     }
                                 }

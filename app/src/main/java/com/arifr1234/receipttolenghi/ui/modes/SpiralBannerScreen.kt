@@ -33,50 +33,67 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.arifr1234.receipttolenghi.printer.DitheringAlgorithm
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.printer.SpiralBannerEngine
 import com.arifr1234.receipttolenghi.printer.SpiralGeometry
+import com.arifr1234.receipttolenghi.ui.components.BrightnessCompensationSelector
+import com.arifr1234.receipttolenghi.ui.components.DitheringAlgorithmSelector
+import com.arifr1234.receipttolenghi.utils.BrightnessCurve
 import com.arifr1234.receipttolenghi.utils.ImageUtils
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
+enum class BannerConfigCategory(val label: String) {
+    BASIC("Basic"),
+    QUALITY("Quality"),
+    MODIFY("Modify")
+}
+
 private const val CYLINDER_AGSL_SRC = """
 uniform shader uStrip;
 uniform float2 uResolution;
-uniform float uCylinderWidth;
+uniform float2 uCylinderSize;
 uniform float uRotation;
 uniform float2 uStripSize;
 uniform float2 uTurns;
@@ -89,15 +106,22 @@ bool raycastCylinder(
     out float2 cylinderUv,
     out float surfaceLighting
 ) {
-    float cylinderRadius = uCylinderWidth * 0.5;
+    float cylinderRadius = uCylinderSize.x * 0.5;
     float relativeScreenX = fragCoord.x - (uResolution.x * 0.5);
 
     if (abs(relativeScreenX) > cylinderRadius) {
         return false;
     }
 
-    float surfaceNormalX = relativeScreenX / cylinderRadius;
-    float surfaceNormalZ = sqrt(1.0 - surfaceNormalX * surfaceNormalX);
+    float cylinderHalfHeight = uCylinderSize.y * 0.5;
+    float relativeScreenY = fragCoord.y - (uResolution.y * 0.5);
+
+    if (abs(relativeScreenY) > cylinderHalfHeight) {
+        return false;
+    }
+
+    float surfaceNormalX = clamp(relativeScreenX / cylinderRadius, -1.0, 1.0);
+    float surfaceNormalZ = sqrt(max(0.0, 1.0 - surfaceNormalX * surfaceNormalX));
     surfaceLighting = 0.35 + 0.65 * surfaceNormalZ;
 
     float circumferentialAngle = mod(asin(surfaceNormalX) - uRotation, 2.0 * PI);
@@ -106,7 +130,10 @@ bool raycastCylinder(
     }
 
     // cylinderUv: [0.0, 1.0) x [0.0, 1.0] - Normalized cylinder surface UV
-    cylinderUv = float2(circumferentialAngle / (2.0 * PI), fragCoord.y / uResolution.y);
+    cylinderUv = float2(
+        circumferentialAngle / (2.0 * PI),
+        (relativeScreenY + cylinderHalfHeight) / uCylinderSize.y
+    );
     return true;
 }
 
@@ -149,8 +176,9 @@ half4 main(float2 fragCoord) {
     // Inside printable area: map horizontally from [margin, 1.0 - margin] to [0.0, 1.0]
     float printableU = (normalizedStripUv.x - margin) / uPrintableRatio;
     float2 stripPixelCoord = float2(printableU, normalizedStripUv.y) * uStripSize;
+    float2 clampedStripCoord = clamp(stripPixelCoord, float2(0.0), uStripSize - 1.0);
 
-    half4 ditherColor = uStrip.eval(stripPixelCoord);
+    half4 ditherColor = uStrip.eval(clampedStripCoord);
     return half4(ditherColor.rgb * half(surfaceLighting), 1.0);
 }
 """
@@ -167,12 +195,13 @@ private class CylinderShaderRenderer {
         canvasWidth: Float,
         canvasHeight: Float,
         cylWidth: Float,
+        cylHeight: Float,
         rotation: Float
     ) {
         val bitmapShader = BitmapShader(ditheredBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         shader.setInputShader("uStrip", bitmapShader)
         shader.setFloatUniform("uResolution", canvasWidth, canvasHeight)
-        shader.setFloatUniform("uCylinderWidth", cylWidth)
+        shader.setFloatUniform("uCylinderSize", cylWidth, cylHeight)
         shader.setFloatUniform("uRotation", rotation)
         shader.setFloatUniform("uStripSize", ditheredBitmap.width.toFloat(), ditheredBitmap.height.toFloat())
         shader.setFloatUniform("uTurns", geometry.turnsX, geometry.turnsY)
@@ -197,6 +226,15 @@ fun SpiralBannerScreen(
     var isProcessing by remember { mutableStateOf(false) }
     var rotationAngle by remember { mutableFloatStateOf(0f) }
 
+    // Configuration states
+    var selectedCategory by remember { mutableStateOf(BannerConfigCategory.BASIC) }
+    var ditheringAlgorithm by remember { mutableStateOf(DitheringAlgorithm.FLOYD_STEINBERG) }
+    var brightnessMultiplier by remember { mutableFloatStateOf(2.0f) }
+    var brightnessCurve by remember { mutableStateOf(BrightnessCurve.CURVE) }
+    var poleCoverageFraction by remember { mutableFloatStateOf(1.0f) }
+    var imagePhase by remember { mutableFloatStateOf(0f) }
+    var instances by remember { mutableIntStateOf(1) }
+
     val minDiameter = remember {
         ceil(SpiralBannerEngine.getMinimumPoleDiameterMm()).coerceAtLeast(17f)
     }
@@ -210,18 +248,36 @@ fun SpiralBannerScreen(
         }
     }
 
-    LaunchedEffect(sourceBitmap, poleDiameterMm) {
+    LaunchedEffect(
+        sourceBitmap,
+        poleDiameterMm,
+        poleCoverageFraction,
+        imagePhase,
+        instances,
+        brightnessMultiplier,
+        brightnessCurve,
+        ditheringAlgorithm
+    ) {
         val bmp = sourceBitmap ?: return@LaunchedEffect
         isProcessing = true
         delay(120.milliseconds) // Debounce rapid slider movement
         withContext(Dispatchers.Default) {
+            val slotBmp = SpiralBannerEngine.prepareSlotBitmap(bmp, poleCoverageFraction)
+            val wOrig = slotBmp.width * instances
+            val hOrig = slotBmp.height
             val geo = SpiralBannerEngine.calculateGeometry(
-                originalWidth = bmp.width,
-                originalHeight = bmp.height,
+                originalWidth = wOrig,
+                originalHeight = hOrig,
                 poleDiameterMm = poleDiameterMm
             )
-            val unwrapped = SpiralBannerEngine.unwrapToStrip(bmp, geo)
-            val dithered = SpiralBannerEngine.processForPrinter(unwrapped, geo)
+            val unwrapped = SpiralBannerEngine.unwrapToStrip(slotBmp, geo, phase = imagePhase)
+            val dithered = SpiralBannerEngine.processForPrinter(
+                unwrappedStrip = unwrapped,
+                geometry = geo,
+                brightnessMultiplier = brightnessMultiplier,
+                brightnessCurve = brightnessCurve,
+                ditheringAlgorithm = ditheringAlgorithm
+            )
             geometry = geo
             ditheredStrip = dithered
             isProcessing = false
@@ -305,6 +361,7 @@ fun SpiralBannerScreen(
                         ) {
                             Text("Select Image")
                         }
+                        PrintDiameterTapeButton()
                     }
                 }
             } else {
@@ -327,7 +384,19 @@ fun SpiralBannerScreen(
                                             }
                                         }
                                 ) {
-                                    val cylW = (size.height * currentGeometry.cylinderAspectRatio).coerceAtMost(size.width * 0.9f)
+                                    val maxAllowedWidth = size.width * 0.9f
+                                    val idealWidth = size.height * currentGeometry.cylinderAspectRatio
+
+                                    val (cylW, cylH) = if (idealWidth > maxAllowedWidth) {
+                                        // When the pole is wider than the viewing canvas, shrink its height
+                                        // so that the true aspect ratio is preserved without squishing the image.
+                                        val w = maxAllowedWidth
+                                        val h = kotlin.math.max(w / currentGeometry.cylinderAspectRatio, 1f)
+                                        Pair(w, h)
+                                    } else {
+                                        // Normal case: pole spans the full canvas height
+                                        Pair(idealWidth, size.height)
+                                    }
 
                                     drawIntoCanvas { canvas ->
                                         shaderRenderer.render(
@@ -337,6 +406,7 @@ fun SpiralBannerScreen(
                                             canvasWidth = size.width,
                                             canvasHeight = size.height,
                                             cylWidth = cylW,
+                                            cylHeight = cylH,
                                             rotation = rotationAngle
                                         )
                                     }
@@ -366,7 +436,7 @@ fun SpiralBannerScreen(
                     }
                 }
 
-                // Controls Card
+                // Categorized Controls Card
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -376,88 +446,232 @@ fun SpiralBannerScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(
+                        PrimaryTabRow(
+                            selectedTabIndex = selectedCategory.ordinal,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End
+                            containerColor = Color.Transparent,
+                            divider = {}
                         ) {
-                            OutlinedButton(
-                                onClick = { imagePickerLauncher.launch("image/*") }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
+                            BannerConfigCategory.entries.forEach { category ->
+                                Tab(
+                                    selected = selectedCategory == category,
+                                    onClick = { selectedCategory = category },
+                                    text = { Text(category.label) }
                                 )
-                                Spacer(modifier = Modifier.size(6.dp))
-                                Text("Change Image")
                             }
                         }
 
-                        // Pole Diameter Slider
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Pole Diameter",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = "${poleDiameterMm.roundToInt()} mm",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                        when (selectedCategory) {
+                            BannerConfigCategory.BASIC -> {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { imagePickerLauncher.launch("image/*") }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.size(6.dp))
+                                            Text("Change Image")
+                                        }
+                                    }
+
+                                    // Pole Diameter Slider
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Pole Diameter",
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                            Text(
+                                                text = "${poleDiameterMm.roundToInt()} mm",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+
+                                        Slider(
+                                            value = poleDiameterMm,
+                                            onValueChange = { poleDiameterMm = it },
+                                            valueRange = minDiameter..80f,
+                                            steps = (80 - minDiameter.roundToInt() - 1).coerceAtLeast(0)
+                                        )
+                                    }
+
+                                    // Print Diameter Measuring Tape Button
+                                    PrintDiameterTapeButton(modifier = Modifier.fillMaxWidth())
+                                }
                             }
 
-                            Slider(
-                                value = poleDiameterMm,
-                                onValueChange = { poleDiameterMm = it },
-                                valueRange = minDiameter..80f,
-                                steps = (80 - minDiameter.roundToInt() - 1).coerceAtLeast(0)
-                            )
+                            BannerConfigCategory.QUALITY -> {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    DitheringAlgorithmSelector(
+                                        selectedAlgorithm = ditheringAlgorithm,
+                                        onAlgorithmSelected = { ditheringAlgorithm = it }
+                                    )
 
-                            if (currentGeometry != null) {
-                                val stripLengthCm = String.format("%.1f", currentGeometry.estimatedLengthCm)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "Perimeter: ${(PI * poleDiameterMm).roundToInt()} mm",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    BrightnessCompensationSelector(
+                                        brightnessMultiplier = brightnessMultiplier,
+                                        onMultiplierChange = { brightnessMultiplier = it },
+                                        brightnessCurve = brightnessCurve,
+                                        onCurveChange = { brightnessCurve = it }
                                     )
-                                    Text(
-                                        text = "Strip Length: $stripLengthCm cm",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                }
+                            }
+
+                            BannerConfigCategory.MODIFY -> {
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Pole Coverage",
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                            Text(
+                                                text = "${(poleCoverageFraction * 100).roundToInt()}%",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Slider(
+                                            value = poleCoverageFraction,
+                                            onValueChange = { poleCoverageFraction = (it * 10f).roundToInt() / 10f },
+                                            valueRange = 0.1f..1.0f,
+                                            steps = 8
+                                        )
+                                        Text(
+                                            text = if (poleCoverageFraction >= 0.99f) {
+                                                "Image wraps continuously around the entire pole."
+                                            } else {
+                                                "Image covers ${(poleCoverageFraction * 100).roundToInt()}% of the circumference."
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    // Phase Slider
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Phase",
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                            Text(
+                                                text = "${(imagePhase * 100).roundToInt()}%",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Slider(
+                                            value = imagePhase,
+                                            onValueChange = { imagePhase = (it * 100f).roundToInt() / 100f },
+                                            valueRange = 0f..1f
+                                        )
+                                        Text(
+                                            text = "Shifts the image position and adjusts where margins appear.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = "Instances",
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                            Text(
+                                                text = "$instances",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        Slider(
+                                            value = instances.toFloat(),
+                                            onValueChange = { instances = it.roundToInt() },
+                                            valueRange = 1f..6f,
+                                            steps = 4
+                                        )
+                                        Text(
+                                            text = if (instances == 1) {
+                                                "Single image around the pole."
+                                            } else {
+                                                "Repeats $instances times around the pole (e.g. visible from opposite sides)."
+                                            },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
 
-                        // Physical instruction card
+                        // Persistent Indicators: Perimeter and Strip Length
+                        HorizontalDivider()
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
                             Text(
-                                text = "Wrap the strip edge-to-edge around a cylindrical pole with diameter ${poleDiameterMm.roundToInt()} mm to view the image.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.secondary
+                                text = "Perimeter: ${(PI * poleDiameterMm).roundToInt()} mm",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            val stripLengthText = currentGeometry?.let {
+                                "${String.format(Locale.US, "%.1f", it.estimatedLengthCm)} cm"
+                            } ?: "..."
+                            Text(
+                                text = "Strip Length: $stripLengthText",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PrintDiameterTapeButton(
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = {
+            val tapeBitmap = SpiralBannerEngine.generateDiameterTape()
+            PrinterManager.printAsync { printer ->
+                val bytes = EscPosPrinterCommands.bitmapToBytes(tapeBitmap, false)
+                val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
+                printer.printFormattedText("[L]<img>$hexString</img>\n", 0f)
+            }
+        },
+        modifier = modifier
+    ) {
+        Icon(
+            imageVector = Icons.Default.Straighten,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.size(8.dp))
+        Text("Print Diameter Measuring Tape")
     }
 }

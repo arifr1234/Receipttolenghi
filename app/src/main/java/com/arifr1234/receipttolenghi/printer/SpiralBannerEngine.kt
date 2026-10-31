@@ -176,7 +176,7 @@ object SpiralBannerEngine {
     fun prepareSlotBitmap(
         sourceBitmap: Bitmap,
         coverageFraction: Float,
-        maxDimension: Int = 1800
+        maxDimension: Int = 1000
     ): Bitmap {
         val clampedCoverage = coverageFraction.coerceIn(0.1f, 1.0f)
         if (clampedCoverage >= 0.999f) {
@@ -289,7 +289,7 @@ object SpiralBannerEngine {
      * Normalizes/caps a source image to a sensible max dimension before processing
      * to prevent OutOfMemoryError while preserving maximum fidelity.
      */
-    fun prepareSourceBitmap(bitmap: Bitmap, maxDimension: Int = 1800): Bitmap {
+    fun prepareSourceBitmap(bitmap: Bitmap, maxDimension: Int = 1000): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
         val maxDim = max(width, height)

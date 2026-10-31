@@ -20,8 +20,16 @@ object PrinterManager {
     const val PRINTER_WIDTH_MM = PRINTABLE_WIDTH_MM
     const val PRINTER_NBR_CHARACTERS_PER_LINE = 32
 
+    private val defaultPrinter: EscPosPrinter by lazy {
+        EscPosPrinter(null as DeviceConnection?, PRINTER_DPI, PRINTER_WIDTH_MM, PRINTER_NBR_CHARACTERS_PER_LINE)
+    }
+
     val MAX_PRINTER_WIDTH_PX: Int by lazy {
-        EscPosPrinter(null as DeviceConnection?, PRINTER_DPI, PRINTER_WIDTH_MM, PRINTER_NBR_CHARACTERS_PER_LINE).printerWidthPx
+        defaultPrinter.printerWidthPx
+    }
+
+    fun mmToPx(mmSize: Float): Int {
+        return (printer ?: defaultPrinter).mmToPx(mmSize)
     }
 
     private var printer: EscPosPrinter? = null

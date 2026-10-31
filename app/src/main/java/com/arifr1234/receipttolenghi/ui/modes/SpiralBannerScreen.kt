@@ -560,7 +560,7 @@ fun SpiralBannerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End,
+                                        horizontalArrangement = Arrangement.Center,
                                     ) {
                                         OutlinedButton(
                                             onClick = { imagePickerLauncher.launch("image/*") },

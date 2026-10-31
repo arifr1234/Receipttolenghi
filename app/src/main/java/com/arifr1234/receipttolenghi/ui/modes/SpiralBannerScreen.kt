@@ -289,7 +289,7 @@ fun SpiralBannerScreen(
         }
         isUnwrapping = true
         if (unwrappedStrip != null) {
-            delay(60.milliseconds)
+            delay(50.milliseconds)
         }
         withContext(Dispatchers.Default) {
             unwrappedStrip = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = imagePhase * instances)

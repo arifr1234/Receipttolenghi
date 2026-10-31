@@ -243,22 +243,28 @@ class SpiralBannerEngineTest {
     }
 
     @Test
+    fun testPoleDiameterConstants() {
+        assertEquals(100f, SpiralBannerEngine.MAX_POLE_DIAMETER_MM, 0.001f)
+        assertEquals(88.9f, SpiralBannerEngine.DEFAULT_POLE_DIAMETER_MM, 0.001f)
+    }
+
+    @Test
     fun testDiameterTapeCalculations() {
         val zeroY = com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx(18f).toFloat()
-        val maxDiameterMm = 80
+        val maxDiameterMm = SpiralBannerEngine.MAX_POLE_DIAMETER_MM.toInt()
 
         val totalHeight = zeroY + com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx((PI * maxDiameterMm).toFloat()) + com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx(8f)
-        // Tape length should be ~2213 dots (~27.6 cm)
-        assertTrue(totalHeight > 2100f)
-        assertTrue(totalHeight < 2300f)
+        // Tape length should be ~2719 dots (~34 cm) for 100mm max diameter
+        assertTrue(totalHeight > 2600f)
+        assertTrue(totalHeight < 2850f)
 
-        // Verify marking positions for 10mm, 20mm, 80mm
+        // Verify marking positions for 10mm, 20mm, 100mm
         val y10 = zeroY + com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx((PI * 10).toFloat())
         val y20 = zeroY + com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx((PI * 20).toFloat())
-        val y80 = zeroY + com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx((PI * 80).toFloat())
+        val y100 = zeroY + com.arifr1234.receipttolenghi.printer.PrinterManager.mmToPx((PI * 100).toFloat())
 
         assertEquals(251f, (y20 - y10), 1.0f)
-        assertEquals(251f * 6f, (y80 - y20), 3.0f)
+        assertEquals(251f * 8f, (y100 - y20), 4.0f)
     }
 
     @Test

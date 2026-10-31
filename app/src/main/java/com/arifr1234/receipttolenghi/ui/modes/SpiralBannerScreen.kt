@@ -221,9 +221,6 @@ fun SpiralBannerScreen(
     val context = LocalContext.current
     var sourceBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var poleDiameterMm by remember { mutableFloatStateOf(35f) }
-    var geometry by remember { mutableStateOf<SpiralGeometry?>(null) }
-    var ditheredStrip by remember { mutableStateOf<Bitmap?>(null) }
-    var isProcessing by remember { mutableStateOf(false) }
     var rotationAngle by remember { mutableFloatStateOf(0f) }
 
     // Configuration states
@@ -248,39 +245,87 @@ fun SpiralBannerScreen(
         }
     }
 
+    // Processing pipeline states
+    var slotBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var unwrappedStrip by remember { mutableStateOf<Bitmap?>(null) }
+    var ditheredStrip by remember { mutableStateOf<Bitmap?>(null) }
+    var isUnwrapping by remember { mutableStateOf(false) }
+    var isDithering by remember { mutableStateOf(false) }
+    val isProcessing = isUnwrapping || isDithering
+
+    // Stage 1: Slot Bitmap (only re-renders when sourceBitmap or poleCoverageFraction changes)
+    LaunchedEffect(sourceBitmap, poleCoverageFraction) {
+        val bmp = sourceBitmap ?: run {
+            slotBitmap = null
+            return@LaunchedEffect
+        }
+        if (slotBitmap != null) {
+            delay(80.milliseconds)
+        }
+        withContext(Dispatchers.Default) {
+            slotBitmap = SpiralBannerEngine.prepareSlotBitmap(bmp, poleCoverageFraction)
+        }
+    }
+
+    // Stage 2: Helical Geometry (instant math, only re-evaluates when slot dimensions, instances, or poleDiameterMm change)
+    val geometry = remember(slotBitmap, instances, poleDiameterMm) {
+        val slot = slotBitmap ?: return@remember null
+        SpiralBannerEngine.calculateGeometry(
+            originalWidth = slot.width * instances,
+            originalHeight = slot.height,
+            poleDiameterMm = poleDiameterMm
+        )
+    }
+
+    // Stage 3: Unwrapped Strip (only re-runs when slotBitmap, geometry, or imagePhase changes)
+    LaunchedEffect(slotBitmap, geometry, imagePhase) {
+        val slot = slotBitmap ?: run {
+            unwrappedStrip = null
+            return@LaunchedEffect
+        }
+        val geo = geometry ?: run {
+            unwrappedStrip = null
+            return@LaunchedEffect
+        }
+        isUnwrapping = true
+        if (unwrappedStrip != null) {
+            delay(60.milliseconds)
+        }
+        withContext(Dispatchers.Default) {
+            unwrappedStrip = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = imagePhase)
+            isUnwrapping = false
+        }
+    }
+
+    // Stage 4: Dithered Strip (only post-processes when unwrappedStrip, geometry, brightness, or dithering changes)
     LaunchedEffect(
-        sourceBitmap,
-        poleDiameterMm,
-        poleCoverageFraction,
-        imagePhase,
-        instances,
+        unwrappedStrip,
+        geometry,
         brightnessMultiplier,
         brightnessCurve,
         ditheringAlgorithm
     ) {
-        val bmp = sourceBitmap ?: return@LaunchedEffect
-        isProcessing = true
-        delay(120.milliseconds) // Debounce rapid slider movement
+        val unwrapped = unwrappedStrip ?: run {
+            ditheredStrip = null
+            return@LaunchedEffect
+        }
+        val geo = geometry ?: run {
+            ditheredStrip = null
+            return@LaunchedEffect
+        }
+        isDithering = true
+        if (ditheredStrip != null) {
+            delay(50.milliseconds)
+        }
         withContext(Dispatchers.Default) {
-            val slotBmp = SpiralBannerEngine.prepareSlotBitmap(bmp, poleCoverageFraction)
-            val wOrig = slotBmp.width * instances
-            val hOrig = slotBmp.height
-            val geo = SpiralBannerEngine.calculateGeometry(
-                originalWidth = wOrig,
-                originalHeight = hOrig,
-                poleDiameterMm = poleDiameterMm
-            )
-            val unwrapped = SpiralBannerEngine.unwrapToStrip(slotBmp, geo, phase = imagePhase)
-            val dithered = SpiralBannerEngine.processForPrinter(
+            ditheredStrip = SpiralBannerEngine.processForPrinter(
                 unwrappedStrip = unwrapped,
                 geometry = geo,
                 brightnessMultiplier = brightnessMultiplier,
                 brightnessCurve = brightnessCurve,
                 ditheringAlgorithm = ditheringAlgorithm
             )
-            geometry = geo
-            ditheredStrip = dithered
-            isProcessing = false
+            isDithering = false
         }
     }
 

@@ -212,6 +212,12 @@ private class CylinderShaderRenderer {
     }
 }
 
+private data class SpiralBannerData(
+    val strip: Bitmap,
+    val geometry: SpiralGeometry,
+    val phase: Float
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpiralBannerScreen(
@@ -247,8 +253,8 @@ fun SpiralBannerScreen(
 
     // Processing pipeline states
     var slotBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var unwrappedStrip by remember { mutableStateOf<Bitmap?>(null) }
-    var ditheredStrip by remember { mutableStateOf<Bitmap?>(null) }
+    var unwrappedData by remember { mutableStateOf<SpiralBannerData?>(null) }
+    var previewData by remember { mutableStateOf<SpiralBannerData?>(null) }
     var isUnwrapping by remember { mutableStateOf(false) }
     var isDithering by remember { mutableStateOf(false) }
     val isProcessing = isUnwrapping || isDithering
@@ -257,6 +263,7 @@ fun SpiralBannerScreen(
     LaunchedEffect(sourceBitmap, poleCoverageFraction) {
         val bmp = sourceBitmap ?: run {
             slotBitmap = null
+            previewData = null
             return@LaunchedEffect
         }
         if (slotBitmap != null) {
@@ -277,53 +284,61 @@ fun SpiralBannerScreen(
         )
     }
 
-    // Stage 3: Unwrapped Strip (only re-runs when slotBitmap, geometry, or imagePhase changes)
-    LaunchedEffect(slotBitmap, geometry, imagePhase) {
-        val slot = slotBitmap ?: run {
-            unwrappedStrip = null
-            return@LaunchedEffect
-        }
-        val geo = geometry ?: run {
-            unwrappedStrip = null
+    // Stage 3: Unwrapped Strip (only re-runs when slotBitmap, geometry, imagePhase, or instances change)
+    LaunchedEffect(slotBitmap, geometry, imagePhase, instances) {
+        val slot = slotBitmap
+        val geo = geometry
+        if (slot == null || geo == null) {
+            unwrappedData = null
+            isUnwrapping = false
             return@LaunchedEffect
         }
         isUnwrapping = true
-        if (unwrappedStrip != null) {
+        if (unwrappedData != null) {
             delay(50.milliseconds)
         }
+        val currentPhase = imagePhase
         withContext(Dispatchers.Default) {
-            unwrappedStrip = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = imagePhase * instances)
+            val unwrapped = SpiralBannerEngine.unwrapToStrip(slot, geo, phase = currentPhase * instances)
+            unwrappedData = SpiralBannerData(
+                strip = unwrapped,
+                geometry = geo,
+                phase = currentPhase
+            )
             isUnwrapping = false
         }
     }
 
-    // Stage 4: Dithered Strip (only post-processes when unwrappedStrip, geometry, brightness, or dithering changes)
+    // Stage 4: Dithered Strip & Preview Pairing (only post-processes when unwrappedData, brightness, or dithering changes)
     LaunchedEffect(
-        unwrappedStrip,
-        geometry,
+        unwrappedData,
         brightnessMultiplier,
         brightnessCurve,
         ditheringAlgorithm
     ) {
-        val unwrapped = unwrappedStrip ?: run {
-            ditheredStrip = null
-            return@LaunchedEffect
-        }
-        val geo = geometry ?: run {
-            ditheredStrip = null
+        val currentUnwrapped = unwrappedData ?: run {
+            if (sourceBitmap == null) {
+                previewData = null
+            }
+            isDithering = false
             return@LaunchedEffect
         }
         isDithering = true
-        if (ditheredStrip != null) {
+        if (previewData != null) {
             delay(50.milliseconds)
         }
         withContext(Dispatchers.Default) {
-            ditheredStrip = SpiralBannerEngine.processForPrinter(
-                unwrappedStrip = unwrapped,
-                geometry = geo,
+            val dithered = SpiralBannerEngine.processForPrinter(
+                unwrappedStrip = currentUnwrapped.strip,
+                geometry = currentUnwrapped.geometry,
                 brightnessMultiplier = brightnessMultiplier,
                 brightnessCurve = brightnessCurve,
                 ditheringAlgorithm = ditheringAlgorithm
+            )
+            previewData = SpiralBannerData(
+                strip = dithered,
+                geometry = currentUnwrapped.geometry,
+                phase = currentUnwrapped.phase
             )
             isDithering = false
         }
@@ -345,14 +360,14 @@ fun SpiralBannerScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            val strip = ditheredStrip ?: return@IconButton
+                            val strip = previewData?.strip ?: return@IconButton
                             PrinterManager.printAsync { printer ->
                                 val bytes = EscPosPrinterCommands.bitmapToBytes(strip, false)
                                 val hexString = PrinterTextParserImg.bytesToHexadecimalString(bytes)
                                 printer.printFormattedText("[L]<img>$hexString</img>\n", 0f)
                             }
                         },
-                        enabled = ditheredStrip != null && !isProcessing
+                        enabled = previewData != null && !isProcessing
                     ) {
                         Icon(
                             imageVector = Icons.Default.Print,
@@ -371,11 +386,7 @@ fun SpiralBannerScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            val currentBitmap = sourceBitmap
-            val currentGeometry = geometry
-            val currentStrip = ditheredStrip
-
-            if (currentBitmap == null) {
+            if (sourceBitmap == null) {
                 ElevatedCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -417,7 +428,10 @@ fun SpiralBannerScreen(
                         .height(340.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        if (currentStrip != null && currentGeometry != null) {
+                        val currentPreview = previewData
+                        if (currentPreview != null) {
+                            val currentStrip = currentPreview.strip
+                            val currentGeometry = currentPreview.geometry
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 val shaderRenderer = remember { CylinderShaderRenderer() }
                                 androidx.compose.foundation.Canvas(
@@ -444,7 +458,7 @@ fun SpiralBannerScreen(
                                     }
 
                                     drawIntoCanvas { canvas ->
-                                        val effectiveRotation = rotationAngle - (imagePhase * (2.0f * PI.toFloat()))
+                                        val effectiveRotation = rotationAngle - (currentPreview.phase * (2.0f * PI.toFloat()))
                                         shaderRenderer.render(
                                             canvas = canvas.nativeCanvas,
                                             ditheredBitmap = currentStrip,
@@ -681,7 +695,7 @@ fun SpiralBannerScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            val stripLengthText = currentGeometry?.let {
+                            val stripLengthText = geometry?.let {
                                 "${String.format(Locale.US, "%.1f", it.estimatedLengthCm)} cm"
                             } ?: "..."
                             Text(

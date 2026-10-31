@@ -6,9 +6,17 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.graphics.Color
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
 import kotlin.math.max
+import kotlin.math.pow
+import kotlin.math.roundToInt
+
+enum class BrightnessCurve(val label: String, val transform: (x: Double, m: Double) -> Double) {
+    CURVE("Curve", { x, m -> 1.0 - (1.0 - x).pow(m) }),
+    LINEAR("Linear", { x, m -> (x * m).coerceAtMost(1.0) })
+}
 
 object ImageUtils {
 
@@ -97,6 +105,36 @@ object ImageUtils {
             throw IllegalStateException("Failed to load image file", e)
         }
     }
+    /**
+     * Applies a non-linear brightness tone curve to a bitmap.
+     */
+    fun applyToneCurve(bitmap: Bitmap, multiplier: Float, curve: BrightnessCurve): Bitmap {
+        if (multiplier == 1f) return bitmap
+
+        val lut = IntArray(256) { i ->
+            val x = i / 255.0
+            val newX = curve.transform(x, multiplier.toDouble())
+            (newX * 255.0).roundToInt().coerceIn(0, 255)
+        }
+
+        val width = bitmap.width
+        val height = bitmap.height
+        val pixels = IntArray(width * height)
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        for (i in pixels.indices) {
+            val p = pixels[i]
+            val a = Color.alpha(p)
+            val r = lut[Color.red(p)]
+            val g = lut[Color.green(p)]
+            val b = lut[Color.blue(p)]
+            pixels[i] = Color.argb(a, r, g, b)
+        }
+
+        val outBitmap = createBitmap(width, height)
+        outBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+        return outBitmap
+    }
 }
 
 /**
@@ -104,3 +142,9 @@ object ImageUtils {
  */
 fun Bitmap.scaleAntiAliased(targetWidth: Int, targetHeight: Int): Bitmap =
     ImageUtils.scaleAntiAliased(this, targetWidth, targetHeight)
+
+/**
+ * Convenient extension to apply a tone curve to a Bitmap.
+ */
+fun Bitmap.applyToneCurve(multiplier: Float, curve: BrightnessCurve): Bitmap =
+    ImageUtils.applyToneCurve(this, multiplier, curve)

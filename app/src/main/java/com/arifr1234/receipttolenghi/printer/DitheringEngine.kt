@@ -4,6 +4,13 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.core.graphics.createBitmap
 
+enum class DitheringAlgorithm(val label: String, val applyAlgo: (Bitmap) -> Bitmap) {
+    THRESHOLD("Threshold", DitheringEngine::applyThreshold),
+    BAYER("Bayer", DitheringEngine::applyBayer),
+    ATKINSON("Atkinson", DitheringEngine::applyAtkinson),
+    FLOYD_STEINBERG("Floyd-Steinberg", DitheringEngine::applyFloydSteinberg)
+}
+
 object DitheringEngine {
 
     private fun getLuminance(pixel: Int): Int {

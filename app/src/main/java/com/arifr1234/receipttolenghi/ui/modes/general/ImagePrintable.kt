@@ -51,12 +51,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.graphics.createBitmap
-import androidx.core.graphics.scale
 import coil.compose.AsyncImage
-import com.arifr1234.receipttolenghi.printer.DitheringEngine
+import com.arifr1234.receipttolenghi.printer.DitheringAlgorithm
 import com.arifr1234.receipttolenghi.printer.PrinterManager
 import com.arifr1234.receipttolenghi.utils.AppNotifier
+import com.arifr1234.receipttolenghi.utils.BrightnessCurve
 import com.arifr1234.receipttolenghi.utils.ImageUtils
 import com.arifr1234.receipttolenghi.utils.scaleAntiAliased
 import com.dantsu.escposprinter.EscPosPrinter
@@ -67,25 +66,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
-import kotlin.math.pow
 import kotlin.math.roundToInt
 
 enum class ImageSize(val label: String) {
     ORIGINAL("Original"),
     HALF("Half"),
     FULL("Full")
-}
-
-enum class DitheringAlgorithm(val label: String, val applyAlgo: (Bitmap) -> Bitmap) {
-    THRESHOLD("Threshold", DitheringEngine::applyThreshold),
-    BAYER("Bayer", DitheringEngine::applyBayer),
-    ATKINSON("Atkinson", DitheringEngine::applyAtkinson),
-    FLOYD_STEINBERG("Floyd-Steinberg", DitheringEngine::applyFloydSteinberg)
-}
-
-enum class BrightnessCurve(val label: String, val transform: (x: Double, m: Double) -> Double) {
-    CURVE("Curve", { x, m -> 1.0 - (1.0 - x).pow(m) }),
-    LINEAR("Linear", { x, m -> (x * m).coerceAtMost(1.0) })
 }
 
 data class ImageState(
@@ -373,36 +359,8 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
     private fun generateDitheredBitmap(context: Context, uri: Uri, state: ImageState, maxWidth: Int): Bitmap {
         val originalBitmap = loadBitmapFromUri(context, uri)
         val scaledBitmap = scaleBitmapToSize(originalBitmap, maxWidth, state.size)
-        val toneAdjustedBitmap = applyToneCurve(scaledBitmap, state.brightnessMultiplier, state.brightnessCurve)
+        val toneAdjustedBitmap = ImageUtils.applyToneCurve(scaledBitmap, state.brightnessMultiplier, state.brightnessCurve)
         return state.ditheringAlgorithm.applyAlgo(toneAdjustedBitmap)
-    }
-
-    private fun applyToneCurve(bitmap: Bitmap, multiplier: Float, curve: BrightnessCurve): Bitmap {
-        if (multiplier == 1f) return bitmap
-
-        val lut = IntArray(256) { i ->
-            val x = i / 255.0
-            val newX = curve.transform(x, multiplier.toDouble())
-            (newX * 255.0).roundToInt().coerceIn(0, 255)
-        }
-
-        val width = bitmap.width
-        val height = bitmap.height
-        val pixels = IntArray(width * height)
-        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-        for (i in pixels.indices) {
-            val p = pixels[i]
-            val a = Color.alpha(p)
-            val r = lut[Color.red(p)]
-            val g = lut[Color.green(p)]
-            val b = lut[Color.blue(p)]
-            pixels[i] = Color.argb(a, r, g, b)
-        }
-
-        val outBitmap = createBitmap(width, height)
-        outBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        return outBitmap
     }
 
     private fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap {

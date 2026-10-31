@@ -13,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,22 +20,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +44,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.arifr1234.receipttolenghi.printer.DitheringAlgorithm
 import com.arifr1234.receipttolenghi.printer.PrinterManager
+import com.arifr1234.receipttolenghi.ui.components.BrightnessCompensationSelector
+import com.arifr1234.receipttolenghi.ui.components.DitheringAlgorithmSelector
 import com.arifr1234.receipttolenghi.utils.AppNotifier
 import com.arifr1234.receipttolenghi.utils.BrightnessCurve
 import com.arifr1234.receipttolenghi.utils.ImageUtils
@@ -238,79 +230,19 @@ object ImagePrintableDefinition : PrintableDefinition<ImageState> {
 
     @Composable
     override fun ConfigUI(state: ImageState, onStateChange: (ImageState) -> Unit) {
-        var showBrightnessInfo by remember { mutableStateOf(false) }
-
-        if (showBrightnessInfo) {
-            AlertDialog(
-                onDismissRequest = { showBrightnessInfo = false },
-                confirmButton = {
-                    TextButton(onClick = { showBrightnessInfo = false }) {
-                        Text("OK")
-                    }
-                },
-                title = { Text("Brightness Compensation") },
-                text = { Text("Thermally printed images tend to appear darker.") }
-            )
-        }
-
         Column {
-            Text("Dithering Algorithm", style = MaterialTheme.typography.labelMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    DitheringAlgorithm.entries.forEach { algo ->
-                        FilterChip(
-                            selected = state.ditheringAlgorithm == algo,
-                            onClick = { onStateChange(state.copy(ditheringAlgorithm = algo)) },
-                            label = { Text(algo.label) }
-                        )
-                    }
-                }
-            }
+            DitheringAlgorithmSelector(
+                selectedAlgorithm = state.ditheringAlgorithm,
+                onAlgorithmSelected = { onStateChange(state.copy(ditheringAlgorithm = it)) }
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Brightness section
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Brightness (%.1fx)".format(state.brightnessMultiplier),
-                    style = MaterialTheme.typography.labelMedium
-                )
-                IconButton(
-                    onClick = { showBrightnessInfo = true },
-                    modifier = Modifier.size(28.dp).padding(start = 2.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "Brightness Info",
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        BrightnessCurve.entries.forEach { curve ->
-                            FilterChip(
-                                selected = state.brightnessCurve == curve,
-                                onClick = { onStateChange(state.copy(brightnessCurve = curve)) },
-                                label = { Text(curve.label) }
-                            )
-                        }
-                    }
-                }
-            }
-            Slider(
-                value = state.brightnessMultiplier,
-                onValueChange = { onStateChange(state.copy(brightnessMultiplier = (it * 10f).roundToInt() / 10f)) },
-                valueRange = 1f..4f,
-                modifier = Modifier.fillMaxWidth()
+            BrightnessCompensationSelector(
+                brightnessMultiplier = state.brightnessMultiplier,
+                onMultiplierChange = { onStateChange(state.copy(brightnessMultiplier = it)) },
+                brightnessCurve = state.brightnessCurve,
+                onCurveChange = { onStateChange(state.copy(brightnessCurve = it)) }
             )
 
             Spacer(modifier = Modifier.height(8.dp))

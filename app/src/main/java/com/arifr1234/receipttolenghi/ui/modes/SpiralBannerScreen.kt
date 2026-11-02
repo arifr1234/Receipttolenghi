@@ -78,6 +78,7 @@ import com.arifr1234.receipttolenghi.ui.components.BrightnessCompensationSelecto
 import com.arifr1234.receipttolenghi.ui.components.DitheringAlgorithmSelector
 import com.arifr1234.receipttolenghi.utils.BrightnessCurve
 import com.arifr1234.receipttolenghi.utils.ImageUtils
+import com.arifr1234.receipttolenghi.utils.scaleAntiAliased
 import com.dantsu.escposprinter.EscPosPrinterCommands
 import com.dantsu.escposprinter.textparser.PrinterTextParserImg
 import kotlinx.coroutines.Dispatchers
@@ -188,10 +189,25 @@ half4 main(float2 fragCoord) {
 }
 """
 
+private const val MAX_SHADER_TEXTURE_HEIGHT = 4096
+
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 private class CylinderShaderRenderer {
     private val shader = RuntimeShader(CYLINDER_AGSL_SRC)
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var cachedSourceBitmap: Bitmap? = null
+    private var cachedShaderBitmap: Bitmap? = null
+
+    private fun getShaderTexture(bitmap: Bitmap): Bitmap {
+        if (bitmap.height <= MAX_SHADER_TEXTURE_HEIGHT) return bitmap
+        if (bitmap === cachedSourceBitmap && cachedShaderBitmap != null) {
+            return cachedShaderBitmap!!
+        }
+        val safeBitmap = bitmap.scaleAntiAliased(bitmap.width, MAX_SHADER_TEXTURE_HEIGHT)
+        cachedSourceBitmap = bitmap
+        cachedShaderBitmap = safeBitmap
+        return safeBitmap
+    }
 
     fun render(
         canvas: Canvas,
@@ -203,12 +219,13 @@ private class CylinderShaderRenderer {
         cylHeight: Float,
         rotation: Float,
     ) {
-        val bitmapShader = BitmapShader(ditheredBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        val textureDitheredBitmap = getShaderTexture(ditheredBitmap)
+        val bitmapShader = BitmapShader(textureDitheredBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
         shader.setInputShader("uStrip", bitmapShader)
         shader.setFloatUniform("uResolution", canvasWidth, canvasHeight)
         shader.setFloatUniform("uCylinderSize", cylWidth, cylHeight)
         shader.setFloatUniform("uRotation", rotation)
-        shader.setFloatUniform("uStripSize", ditheredBitmap.width.toFloat(), ditheredBitmap.height.toFloat())
+        shader.setFloatUniform("uStripSize", textureDitheredBitmap.width.toFloat(), textureDitheredBitmap.height.toFloat())
         shader.setFloatUniform("uTurns", geometry.turnsX, geometry.turnsY)
         shader.setFloatUniform("uPrintableRatio", geometry.printableRatio)
 
